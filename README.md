@@ -8,32 +8,41 @@ A Go project that builds Kubernetes controllers for Fastly services.
 fastly-operator/
 ├── cmd/
 │   └── main.go          # Application entry point
+├── config/
+│   └── deployment.yaml  # Kubernetes deployment manifest
+├── Makefile             # Build and deployment automation
 ├── README.md
 └── Dockerfile
 ```
 
-## Building and Running
-
-### Local Development
-
-To build and run the application locally:
+## Quick Start
 
 ```bash
-# Build the application
-go build -o fastly-operator ./cmd
+# Deploy to local kind cluster (builds, creates cluster, and deploys)
+make kind-deploy
 
-# Run the application
-./fastly-operator
+# Clean up when done
+make kind-delete
+make clean
 ```
 
-### Docker
-
-To build and run with Docker:
+## Available Commands
 
 ```bash
-# Build the Docker image
-docker build -t fastly-operator .
-
-# Run the container
-docker run fastly-operator
+make help          # Show all available commands
+make build         - Build the Go binary locally
+make docker-build  - Build Docker image
+make kind-create   - Create kind cluster
+make kind-load     - Load Docker image into kind cluster
+make kind-deploy   - Build and deploy to kind cluster
+make kind-delete   - Delete kind cluster
+make clean         - Clean build artifacts
 ```
+
+## Kubernetes Resources
+
+The project uses a simple deployment manifest in the `config/` directory:
+
+- **deployment.yaml**: Defines the Fastly operator deployment
+
+This approach makes it easy to add more Kubernetes resources (ConfigMaps, Secrets, RBAC, etc.) as the project grows.
