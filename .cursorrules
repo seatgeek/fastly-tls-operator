@@ -1,0 +1,16 @@
+# Fastly Operator Project
+
+This is a Go project that builds Kubernetes controllers for Fastly services.
+
+## Basic Guidelines
+
+- Please suggest edits to the .cursorrules file itself so that we can improve cursor's suggestions over time
+- When it comes to prompts regarding library, package, framework versions - you should prefer to search the web for this information instead of relying on your training data. It is likely that new versions of tools are available that you are not yet aware of.
+
+## Version Management Rules
+
+- **Always search for latest versions**: When suggesting software versions, search the web for current releases
+- **Don't rely on training data for version numbers**: Training data may be outdated for version information
+- **Verify release dates and current stable versions**: Check official sources for the most recent stable releases
+- **Be explicit about version sources**: When suggesting versions, mention how you verified the information
+- **Question outdated suggestions**: If a version seems old relative to current dates, double-check with web search
