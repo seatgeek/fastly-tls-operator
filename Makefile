@@ -25,7 +25,7 @@ CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 KUSTOMIZE_VERSION ?= v5.0.1
 CONTROLLER_TOOLS_VERSION ?= v0.15.0
 
-.PHONY: help build docker-build kind-create kind-load kind-deploy kind-restart kind-delete clean controller-gen generate manifests kustomize install apply-examples
+.PHONY: help build docker-build kind-create kind-load kind-deploy kind-restart kind-delete clean controller-gen generate manifests kustomize install apply-examples kind-dependencies
 
 # Default target
 help:
@@ -67,10 +67,18 @@ kind-load: docker-build kind-create
 	@echo "Loading Docker image into kind cluster..."
 	kind load docker-image $(IMAGE_NAME):$(IMAGE_TAG) --name $(KIND_CLUSTER_NAME)
 
+.PHONY: kind-install-dependencies
+kind-install-dependencies:
+	@echo "Installing cert-manager in kind cluster..."
+	$(KUBECTL) apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
+	@echo "Waiting for cert-manager deployment to be ready..."
+	$(KUBECTL) -n cert-manager rollout status deployment/cert-manager-webhook
+
+
 # Deploy to kind cluster and restart (depends on kind-load)
-kind-deploy: kind-load
+kind-deploy: kind-load kind-install-dependencies
 	@echo "Deploying to kind cluster..."
-	kubectl --context $(KIND_CONTEXT) apply -f config/deployment.yaml
+	$(KUSTOMIZE) build config/ | $(KUBECTL) apply -f -
 	@$(MAKE) _kind-restart-deployment
 	@$(MAKE) _clean-artifacts
 

@@ -1,0 +1,28 @@
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: validating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-platform-seatgeek-io-v1alpha1-fastlycertificatesync
+  failurePolicy: Fail
+  name: vfastlycertificatesync-v1alpha1.platform.seatgeek.io
+  rules:
+  - apiGroups:
+    - platform.seatgeek.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    - DELETE
+    resources:
+    - fastlycertificatesyncs
+  sideEffects: None
+  timeoutSeconds: 5 

@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- role.yaml
+- fastlycertificatesync_admin_role.yaml
+- fastlycertificatesync_editor_role.yaml
+- fastlycertificatesync_viewer_role.yaml 

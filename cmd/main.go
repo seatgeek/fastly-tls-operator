@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"os"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/transport"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -18,6 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -43,6 +46,8 @@ type cliFlags struct {
 	probeAddr            string
 	leaderElectionID     string
 	syncPeriod           time.Duration
+	webhookPort          int
+	webhookCertDir       string
 }
 
 // BindFlags will parse the given flagset
@@ -51,6 +56,8 @@ func (c *cliFlags) BindFlags(fs *flag.FlagSet) {
 	fs.BoolVar(&(c.enableLeaderElection), "leader-election", c.enableLeaderElection, "Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
 	fs.StringVar(&(c.leaderElectionID), "leader-election-id", c.leaderElectionID, "The name of the resource that leader election will use for holding the leader lock.")
 	fs.DurationVar(&(c.syncPeriod), "sync-period", c.syncPeriod, "Maximum delay between reconciles of any object.")
+	fs.IntVar(&(c.webhookPort), "webhook-port", c.webhookPort, "Webhook bind port")
+	fs.StringVar(&(c.webhookCertDir), "webhook-cert-dir", c.webhookCertDir, "Certs used to terminate TLS for webhook server")
 }
 
 func main() {
@@ -60,6 +67,8 @@ func main() {
 		enableLeaderElection: true,
 		leaderElectionID:     "fastly-operator-leader-election",
 		syncPeriod:           4 * time.Hour,
+		webhookPort:          9443,
+		webhookCertDir:       "/var/run/webhook-serving-certs",
 	}
 
 	opts.BindFlags(flag.CommandLine)
@@ -79,6 +88,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	webhookOpts := webhook.Options{
+		Port:     opts.webhookPort,
+		CertName: "tls.crt",
+		KeyName:  "tls.key",
+		CertDir:  opts.webhookCertDir,
+		TLSOpts:  []func(*tls.Config){},
+	}
+
+	config.WrapTransport = transport.DebugWrappers
+
 	// populate the runtime config struct for the controller
 	controllerRuntimeConfig := fastlycertificatesync.RuntimeConfig{}
 
@@ -87,7 +106,7 @@ func main() {
 		Metrics: server.Options{
 			BindAddress: opts.metricsAddr,
 		},
-		WebhookServer:          nil, // Disable webhooks completely
+		WebhookServer:          webhook.NewServer(webhookOpts),
 		HealthProbeBindAddress: opts.probeAddr,
 		LeaderElection:         opts.enableLeaderElection,
 		LeaderElectionID:       opts.leaderElectionID,

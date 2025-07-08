@@ -1,0 +1,21 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: fastly-operator-webhook-ca
+  namespace: default
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: fastly-operator-webhook
+  namespace: default
+spec:
+  secretName: fastly-operator-webhook-tls
+  issuerRef:
+    kind: Issuer
+    name: fastly-operator-webhook-ca
+  dnsNames:
+  - fastly-operator-admission.default.svc
+  - fastly-operator-admission.default.svc.cluster.local 
