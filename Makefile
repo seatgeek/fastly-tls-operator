@@ -53,6 +53,7 @@ kind-deploy: kind-load
 	@echo "Deploying to kind cluster..."
 	kubectl --context $(KIND_CONTEXT) apply -f config/deployment.yaml
 	@$(MAKE) _kind-restart-deployment
+	@$(MAKE) _clean-artifacts
 
 # Restart deployment to pick up new image
 kind-restart:
@@ -65,12 +66,12 @@ _kind-restart-deployment:
 	@echo "Waiting for rollout to complete..."
 	kubectl --context $(KIND_CONTEXT) rollout status deployment/fastly-operator
 
+# Clean build artifacts
+_clean-artifacts:
+	@echo "Cleaning build artifacts..."
+	rm -f $(BINARY_NAME) 
+
 # Delete kind cluster
 kind-delete:
 	@echo "Deleting kind cluster '$(KIND_CLUSTER_NAME)'..."
 	kind delete cluster --name $(KIND_CLUSTER_NAME)
-
-# Clean build artifacts
-clean:
-	@echo "Cleaning build artifacts..."
-	rm -f $(BINARY_NAME) 
