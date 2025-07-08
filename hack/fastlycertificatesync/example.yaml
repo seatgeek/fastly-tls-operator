@@ -3,4 +3,4 @@ kind: FastlyCertificateSync
 metadata:
   name: example
 spec:
-  foo: bar
+  suspend: false

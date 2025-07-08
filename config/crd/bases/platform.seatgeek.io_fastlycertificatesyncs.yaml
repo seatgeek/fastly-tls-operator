@@ -14,7 +14,11 @@ spec:
     singular: fastlycertificatesync
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.suspend
+      name: Suspended
+      type: boolean
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: FastlyCertificateSync is the Schema for the fastlycertificatesyncs
@@ -40,10 +44,10 @@ spec:
           spec:
             description: FastlyCertificateSyncSpec defines the desired state of FastlyCertificateSync.
             properties:
-              foo:
+              suspend:
                 description: Foo is an example field of FastlyCertificateSync. Edit
                   fastlycertificatesync_types.go to remove/update
-                type: string
+                type: boolean
             type: object
           status:
             description: FastlyCertificateSyncStatus defines the observed state of

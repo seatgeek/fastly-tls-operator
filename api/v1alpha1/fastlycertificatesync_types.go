@@ -15,7 +15,7 @@ type FastlyCertificateSyncSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of FastlyCertificateSync. Edit fastlycertificatesync_types.go to remove/update
-	Foo string `json:"foo,omitempty" yaml:"foo,omitempty"`
+	Suspend bool `json:"suspend,omitempty" yaml:"suspend,omitempty"`
 }
 
 // FastlyCertificateSyncStatus defines the observed state of FastlyCertificateSync.
@@ -27,6 +27,7 @@ type FastlyCertificateSyncStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Suspended",type="boolean",JSONPath=".spec.suspend"
 
 // FastlyCertificateSync is the Schema for the fastlycertificatesyncs API.
 type FastlyCertificateSync struct {
@@ -44,6 +45,10 @@ type FastlyCertificateSyncList struct {
 	metav1.TypeMeta `json:",inline" yaml:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 	Items           []FastlyCertificateSync `json:"items" yaml:"items"`
+}
+
+func (in *FastlyCertificateSync) IsSuspended() bool {
+	return in.Spec.Suspend
 }
 
 func init() {

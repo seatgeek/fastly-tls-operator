@@ -4,6 +4,7 @@ IMAGE_NAME=fastly-operator
 IMAGE_TAG=latest
 KIND_CLUSTER_NAME=fastly-cluster
 KIND_CONTEXT=kind-$(KIND_CLUSTER_NAME)
+OPERATOR_NAME=fastly-operator
 
 # Go build flags
 GOOS=linux
@@ -24,8 +25,7 @@ CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 KUSTOMIZE_VERSION ?= v5.0.1
 CONTROLLER_TOOLS_VERSION ?= v0.15.0
 
-
-.PHONY: help build docker-build kind-create kind-load kind-deploy kind-restart kind-delete clean
+.PHONY: help build docker-build kind-create kind-load kind-deploy kind-restart kind-delete clean controller-gen generate manifests kustomize install apply-examples
 
 # Default target
 help:
@@ -38,6 +38,10 @@ help:
 	@echo "  kind-restart  - Restart deployment to pick up new image"
 	@echo "  kind-delete   - Delete kind cluster"
 	@echo "  clean         - Clean build artifacts"
+	@echo "  generate      - Generate code (DeepCopy, etc.)"
+	@echo "  manifests     - Generate CRDs and RBAC"
+	@echo "  install       - Install CRDs into cluster"
+	@echo "  apply-examples - Apply example resources"
 
 # Build the Go binary
 build:
@@ -82,32 +86,34 @@ _kind-restart-deployment:
 	kubectl --context $(KIND_CONTEXT) rollout status deployment/fastly-operator
 
 # Clean build artifacts
-_clean-artifacts:
+clean:
 	@echo "Cleaning build artifacts..."
-	rm -f $(BINARY_NAME) 
+	rm -f $(BINARY_NAME)
+
+# Internal target to clean artifacts (kept for backward compatibility)
+_clean-artifacts: clean
 
 # Delete kind cluster
 kind-delete:
 	@echo "Deleting kind cluster '$(KIND_CLUSTER_NAME)'..."
 	kind delete cluster --name $(KIND_CLUSTER_NAME)
 
-
-.PHONY: controller-gen
-controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary. If wrong version is installed, it will be overwritten.
+# Download controller-gen locally if necessary
+controller-gen: $(CONTROLLER_GEN)
 $(CONTROLLER_GEN): $(LOCALBIN)
 	test -s $(LOCALBIN)/controller-gen && $(LOCALBIN)/controller-gen --version | grep -q $(CONTROLLER_TOOLS_VERSION) || \
 	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
 
-.PHONY: generate
-generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
+# Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations
+generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
-.PHONY: manifests
-manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
+# Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects
+manifests: controller-gen
 	$(CONTROLLER_GEN) rbac:roleName=$(OPERATOR_NAME) crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases output:webhook:dir=config/operator/webhook
 
-.PHONY: kustomize
-kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary. If wrong version is installed, it will be removed before downloading.
+# Download kustomize locally if necessary
+kustomize: $(KUSTOMIZE)
 $(KUSTOMIZE): $(LOCALBIN)
 	@if test -x $(LOCALBIN)/kustomize && ! $(LOCALBIN)/kustomize version | grep -q $(KUSTOMIZE_VERSION); then \
 		echo "$(LOCALBIN)/kustomize version is not expected $(KUSTOMIZE_VERSION). Removing it before installing."; \
@@ -115,12 +121,11 @@ $(KUSTOMIZE): $(LOCALBIN)
 	fi
 	test -s $(LOCALBIN)/kustomize || GOBIN=$(LOCALBIN) GO111MODULE=on go install sigs.k8s.io/kustomize/kustomize/v5@$(KUSTOMIZE_VERSION)
 
-
-.PHONY: install
-install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+# Install CRDs into the K8s cluster specified in ~/.kube/config
+install: manifests kustomize
 	$(KUSTOMIZE) build config/crd | $(KUBECTL) apply -f -
 
-.PHONY: apply-examples
+# Apply example resources
 apply-examples: install
 	@if ! $(KUBECTL) get namespace test >/dev/null 2>&1; then \
 		echo "Creating namespace test..."; \

@@ -1,0 +1,32 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: fastly-operator
+rules:
+- apiGroups:
+  - platform.seatgeek.io
+  resources:
+  - fastlycertificatesyncs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - platform.seatgeek.io
+  resources:
+  - fastlycertificatesyncs/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - platform.seatgeek.io
+  resources:
+  - fastlycertificatesyncs/status
+  verbs:
+  - get
+  - patch
+  - update
