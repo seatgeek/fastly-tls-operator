@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	"github.com/fastly-operator/api/v1alpha1"
 	"github.com/seatgeek/k8s-reconciler-generic/pkg/k8sutil"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -38,6 +39,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(v1alpha1.AddToScheme(scheme))
+	utilruntime.Must(cmv1.AddToScheme(scheme))
 }
 
 type cliFlags struct {

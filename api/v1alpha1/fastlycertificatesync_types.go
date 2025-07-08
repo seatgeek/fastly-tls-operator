@@ -14,8 +14,11 @@ type FastlyCertificateSyncSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of FastlyCertificateSync. Edit fastlycertificatesync_types.go to remove/update
+	// Reconciliation of individual resources may be suspended by setting this flag.
 	Suspend bool `json:"suspend,omitempty" yaml:"suspend,omitempty"`
+
+	// The name of the Certificate resource to sync
+	CertificateName string `json:"certificateName,omitempty" yaml:"certificateName,omitempty"`
 }
 
 // FastlyCertificateSyncStatus defines the observed state of FastlyCertificateSync.

@@ -5,6 +5,13 @@ metadata:
   name: fastly-operator
 rules:
 - apiGroups:
+  - cert-manager.io
+  resources:
+  - certificaterequests
+  - certificates
+  verbs:
+  - '*'
+- apiGroups:
   - platform.seatgeek.io
   resources:
   - fastlycertificatesyncs

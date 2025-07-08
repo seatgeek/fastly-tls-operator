@@ -44,9 +44,12 @@ spec:
           spec:
             description: FastlyCertificateSyncSpec defines the desired state of FastlyCertificateSync.
             properties:
+              certificateName:
+                description: The name of the Certificate resource to sync
+                type: string
               suspend:
-                description: Foo is an example field of FastlyCertificateSync. Edit
-                  fastlycertificatesync_types.go to remove/update
+                description: Reconciliation of individual resources may be suspended
+                  by setting this flag.
                 type: boolean
             type: object
           status:
