@@ -1,11 +1,13 @@
+/*
+Copyright 2025 SeatGeek.
+*/
+
 package v1alpha1
 
 import (
+	"github.com/seatgeek/k8s-reconciler-generic/apiobjects"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 // FastlyCertificateSyncSpec defines the desired state of FastlyCertificateSync.
 type FastlyCertificateSyncSpec struct {
@@ -13,15 +15,14 @@ type FastlyCertificateSyncSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of FastlyCertificateSync. Edit fastlycertificatesync_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
-
-	Bar string `json:"bar,omitempty"`
+	Foo string `json:"foo,omitempty" yaml:"foo,omitempty"`
 }
 
 // FastlyCertificateSyncStatus defines the observed state of FastlyCertificateSync.
 type FastlyCertificateSyncStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	apiobjects.SubjectStatus `json:",inline" yaml:",inline"`
 }
 
 // +kubebuilder:object:root=true
@@ -29,20 +30,20 @@ type FastlyCertificateSyncStatus struct {
 
 // FastlyCertificateSync is the Schema for the fastlycertificatesyncs API.
 type FastlyCertificateSync struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
+	metav1.TypeMeta   `json:",inline" yaml:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 
-	Spec   FastlyCertificateSyncSpec   `json:"spec,omitempty"`
-	Status FastlyCertificateSyncStatus `json:"status,omitempty"`
+	Spec   FastlyCertificateSyncSpec   `json:"spec,omitempty" yaml:"spec,omitempty"`
+	Status FastlyCertificateSyncStatus `json:"status,omitempty" yaml:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
 // FastlyCertificateSyncList contains a list of FastlyCertificateSync.
 type FastlyCertificateSyncList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []FastlyCertificateSync `json:"items"`
+	metav1.TypeMeta `json:",inline" yaml:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
+	Items           []FastlyCertificateSync `json:"items" yaml:"items"`
 }
 
 func init() {

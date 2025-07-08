@@ -1,6 +1,6 @@
 // Package v1alpha1 contains API Schema definitions for the platform.seatgeek.io v1alpha1 API group.
 // +kubebuilder:object:generate=true
-// +groupName=platform.seatgeek.io.platform.seatgeek.io
+// +groupName=platform.seatgeek.io
 package v1alpha1
 
 import (

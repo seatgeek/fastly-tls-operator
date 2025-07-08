@@ -98,6 +98,9 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 	test -s $(LOCALBIN)/controller-gen && $(LOCALBIN)/controller-gen --version | grep -q $(CONTROLLER_TOOLS_VERSION) || \
 	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
 
+.PHONY: generate
+generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
+	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
@@ -116,3 +119,13 @@ $(KUSTOMIZE): $(LOCALBIN)
 .PHONY: install
 install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/crd | $(KUBECTL) apply -f -
+
+.PHONY: apply-examples
+apply-examples: install
+	@if ! $(KUBECTL) get namespace test >/dev/null 2>&1; then \
+		echo "Creating namespace test..."; \
+		$(KUBECTL) create namespace test; \
+	else \
+		echo "Namespace test already exists"; \
+	fi
+	$(KUBECTL) -n test apply -f hack/fastlycertificatesync/example.yaml

@@ -4,9 +4,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.15.0
-  name: fastlycertificatesyncs.platform.seatgeek.io.platform.seatgeek.io
+  name: fastlycertificatesyncs.platform.seatgeek.io
 spec:
-  group: platform.seatgeek.io.platform.seatgeek.io
+  group: platform.seatgeek.io
   names:
     kind: FastlyCertificateSync
     listKind: FastlyCertificateSyncList
@@ -40,8 +40,6 @@ spec:
           spec:
             description: FastlyCertificateSyncSpec defines the desired state of FastlyCertificateSync.
             properties:
-              bar:
-                type: string
               foo:
                 description: Foo is an example field of FastlyCertificateSync. Edit
                   fastlycertificatesync_types.go to remove/update
@@ -50,6 +48,17 @@ spec:
           status:
             description: FastlyCertificateSyncStatus defines the observed state of
               FastlyCertificateSync.
+            properties:
+              issues:
+                items:
+                  type: string
+                type: array
+              observedGeneration:
+                description: |-
+                  ObservedGeneration reflects the metadata.generation last reconciled, it's a vector clock to let you know when
+                  the operator is guaranteed to have affected a certain change.
+                format: int64
+                type: integer
             type: object
         type: object
     served: true
