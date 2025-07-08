@@ -1,9 +1,0 @@
-apiVersion: platform.seatgeek.io.platform.seatgeek.io/v1alpha1
-kind: FastlyCertificateSync
-metadata:
-  labels:
-    app.kubernetes.io/name: fastly-operator
-    app.kubernetes.io/managed-by: kustomize
-  name: fastlycertificatesync-sample
-spec:
-  # TODO(user): Add fields here

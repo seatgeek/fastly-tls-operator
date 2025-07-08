@@ -40,6 +40,8 @@ spec:
           spec:
             description: FastlyCertificateSyncSpec defines the desired state of FastlyCertificateSync.
             properties:
+              bar:
+                type: string
               foo:
                 description: Foo is an example field of FastlyCertificateSync. Edit
                   fastlycertificatesync_types.go to remove/update

@@ -1,4 +1,0 @@
-## Append samples of your project ##
-resources:
-- platform.seatgeek.io_v1alpha1_fastlycertificatesync.yaml
-# +kubebuilder:scaffold:manifestskustomizesamples

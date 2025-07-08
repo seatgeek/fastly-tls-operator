@@ -14,6 +14,8 @@ type FastlyCertificateSyncSpec struct {
 
 	// Foo is an example field of FastlyCertificateSync. Edit fastlycertificatesync_types.go to remove/update
 	Foo string `json:"foo,omitempty"`
+
+	Bar string `json:"bar,omitempty"`
 }
 
 // FastlyCertificateSyncStatus defines the observed state of FastlyCertificateSync.
