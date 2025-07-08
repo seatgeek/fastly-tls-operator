@@ -1,5 +1,4 @@
-group: platform.seatgeek.io
-apiVersion: v1alpha1
+apiVersion: platform.seatgeek.io/v1alpha1
 kind: FastlyCertificateSync
 metadata:
   name: example
