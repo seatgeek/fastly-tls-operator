@@ -9,7 +9,7 @@ resources:
 - manifests.yaml
 
 commonAnnotations:
-  cert-manager.io/inject-ca-from: default/fastly-operator-webhook
+  cert-manager.io/inject-ca-from: kube-system/fastly-operator-webhook
 
 patches:
 - target:
@@ -25,7 +25,7 @@ patches:
       value: fastly-operator-admission
     - op: replace
       path: /webhooks/0/clientConfig/service/namespace
-      value: default
+      value: kube-system
     - op: replace
       path: /webhooks/0/clientConfig/service/port
       value: 443
@@ -42,7 +42,7 @@ patches:
       value: fastly-operator-admission
     - op: replace
       path: /webhooks/0/clientConfig/service/namespace
-      value: default
+      value: kube-system
     - op: replace
       path: /webhooks/0/clientConfig/service/port
       value: 443 

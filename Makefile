@@ -20,6 +20,7 @@ $(LOCALBIN):
 KUBECTL ?= kubectl --context=$(KIND_CONTEXT)
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
+OPENSSL ?= openssl
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.0.1
@@ -133,12 +134,28 @@ $(KUSTOMIZE): $(LOCALBIN)
 install: manifests kustomize
 	$(KUSTOMIZE) build config/crd | $(KUBECTL) apply -f -
 
+apply-issuer-secret:
+	echo "Generating issuer PK..."
+	$(OPENSSL) genpkey -algorithm RSA -out root-ca.key -pkeyopt rsa_keygen_bits:4096
+	echo "Generating local CA issuer secret..."
+	$(OPENSSL) req -x509 -new -key root-ca.key -out root-ca.crt -days 3650 \
+	-subj "/CN=My Root CA" \
+	-extensions v3_ca \
+	-addext "keyUsage = critical, digitalSignature, keyCertSign, cRLSign" \
+	-addext "extendedKeyUsage = serverAuth, clientAuth"
+	echo "Creating local CA issuer secret..."
+	$(KUBECTL) create secret -n fastly-operator-test tls local-ca-issuer --key=root-ca.key --cert=root-ca.crt
+	echo "Removing local CA issuer secret files..."
+	rm root-ca.key root-ca.crt
+
 # Apply example resources
 apply-examples: install
-	@if ! $(KUBECTL) get namespace test >/dev/null 2>&1; then \
-		echo "Creating namespace test..."; \
-		$(KUBECTL) create namespace test; \
+	@if ! $(KUBECTL) get namespace fastly-operator-test >/dev/null 2>&1; then \
+		echo "Creating namespace fastly-operator-test..."; \
+		$(KUBECTL) create namespace fastly-operator-test; \
 	else \
-		echo "Namespace test already exists"; \
+		echo "Namespace fastly-operator-test already exists"; \
 	fi
-	$(KUBECTL) -n test apply -f hack/fastlycertificatesync/example.yaml
+
+	$(KUBECTL) -n fastly-operator-test apply -f hack/fastlycertificatesync/issuer.yaml
+	$(KUBECTL) -n fastly-operator-test apply -f hack/fastlycertificatesync/example.yaml
