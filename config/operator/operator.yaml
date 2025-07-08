@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: fastly-operator
-  namespace: default
+  namespace: kube-system
 spec:
   replicas: 1
   selector:
@@ -13,6 +13,7 @@ spec:
       labels:
         app.kubernetes.io/name: fastly-operator
     spec:
+      serviceAccountName: fastly-operator
       securityContext:
         runAsUser: 65532
         runAsNonRoot: true
@@ -40,6 +41,18 @@ spec:
         - name: webhook-tls
           mountPath: /var/run/webhook-serving-certs
           readOnly: true
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: health
+          initialDelaySeconds: 3
+          periodSeconds: 2
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: health
+          initialDelaySeconds: 3
+          periodSeconds: 2
         resources:
           requests:
             memory: "64Mi"

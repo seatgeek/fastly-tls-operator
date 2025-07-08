@@ -89,9 +89,9 @@ kind-restart:
 # Internal target to restart deployment (not meant to be called directly)
 _kind-restart-deployment:
 	@echo "Restarting deployment to pick up new image..."
-	kubectl --context $(KIND_CONTEXT) rollout restart deployment/fastly-operator
+	kubectl --context $(KIND_CONTEXT) -n kube-system rollout restart deployment/fastly-operator
 	@echo "Waiting for rollout to complete..."
-	kubectl --context $(KIND_CONTEXT) rollout status deployment/fastly-operator
+	kubectl --context $(KIND_CONTEXT) -n kube-system rollout status deployment/fastly-operator
 
 # Clean build artifacts
 clean:
