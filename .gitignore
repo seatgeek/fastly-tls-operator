@@ -27,4 +27,4 @@ go.work
 *~
 
 # don't track the local changes when a fastly secret is created
-config/operator/webhook/fastly-secret.yaml
+config/operator/fastly-secret.yaml

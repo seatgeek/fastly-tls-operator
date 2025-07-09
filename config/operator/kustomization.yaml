@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
 - operator.yaml
 - service.yaml
+- fastly-secret.yaml
 - webhook/
 
 images:

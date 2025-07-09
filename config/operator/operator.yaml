@@ -28,8 +28,11 @@ spec:
         image: fastly-operator:latest
         imagePullPolicy: IfNotPresent
         env:
-        - name: LOG_LEVEL
-          value: DEBUG
+        - name: FASTLY_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: fastly-secret
+              key: api-key
         args:
         - '-leader-election=true'
         - '-webhook-port=9443'
