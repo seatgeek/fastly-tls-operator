@@ -6,6 +6,7 @@ import (
 
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	"github.com/fastly-operator/api/v1alpha1"
+	"github.com/fastly/go-fastly/v10/fastly"
 	"github.com/seatgeek/k8s-reconciler-generic/pkg/genrec"
 	rm "github.com/seatgeek/k8s-reconciler-generic/pkg/resourcemanager"
 	kmetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,10 +31,18 @@ var (
 
 type Context = genrec.Context[*v1alpha1.FastlyCertificateSync, *Config]
 
+type ObservedState struct {
+	PrivateKeyUploaded    bool
+	CertificateUploaded   bool
+	DNSActivationsCreated bool
+}
+
 type Logic struct {
 	genrec.WithoutFinalizationMixin[*v1alpha1.FastlyCertificateSync, *Config]
 	rm.ResourceManager[*Context]
-	Config RuntimeConfig
+	Config        RuntimeConfig
+	FastlyClient  *fastly.Client
+	ObservedState ObservedState
 }
 
 func (l *Logic) NewSubject() *v1alpha1.FastlyCertificateSync {
@@ -100,6 +109,7 @@ func (l *Logic) ConfigureController(cb *builder.Builder, cluster cluster.Cluster
 		for _, fastlyCertificateSync := range all.Items {
 			// reconcile fastlyCertificateSync resources that are referenced by the watched certificate
 			if (object.GetName() == fastlyCertificateSync.Spec.CertificateName) && (object.GetNamespace() == fastlyCertificateSync.GetNamespace()) {
+				ctrl.Log.Info("reconciling FastlyCertificateSync", "name", fastlyCertificateSync.Name, "namespace", fastlyCertificateSync.Namespace)
 				res = append(res, reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Name:      fastlyCertificateSync.GetName(),
@@ -130,12 +140,30 @@ func (l *Logic) Validate(svc *v1alpha1.FastlyCertificateSync) error {
 }
 
 func (l *Logic) ObserveResources(ctx *Context) (genrec.Resources, error) {
-	// TODO: Implement resource observation
+	ctx.Log.Info("observing resources for FastlyCertificateSync", "name", ctx.Subject.Name, "namespace", ctx.Subject.Namespace)
+
+	if !l.ObservedState.PrivateKeyUploaded {
+		ctx.Log.Info("We observed the private key wasn't uploaded!")
+
+		return genrec.Resources{}, nil
+	}
+
 	return genrec.Resources{}, nil
 }
 
 func (l *Logic) ApplyUnmanaged(ctx *Context) error {
-	// TODO: Implement unmanaged apply logic
+	ctx.Log.Info("applying unmanaged FastlyCertificateSync", "name", ctx.Subject.Name, "namespace", ctx.Subject.Namespace)
+
+	if !l.ObservedState.PrivateKeyUploaded {
+		ctx.Log.Info("Private key is not uploaded, doing that now...")
+		// how do I requeue the resource?
+
+		ctx.Log.Info("Requeueing...")
+		ctx.SetRequeue(0)
+
+		return nil
+	}
+
 	return nil
 }
 

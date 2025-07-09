@@ -27,6 +27,9 @@ spec:
       - name: operator
         image: fastly-operator:latest
         imagePullPolicy: IfNotPresent
+        env:
+        - name: LOG_LEVEL
+          value: DEBUG
         args:
         - '-leader-election=true'
         - '-webhook-port=9443'

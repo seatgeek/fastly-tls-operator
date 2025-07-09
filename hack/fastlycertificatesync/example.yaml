@@ -1,6 +1,21 @@
 apiVersion: platform.seatgeek.io/v1alpha1
 kind: FastlyCertificateSync
 metadata:
-  name: example
+  name: example-1
 spec:
   suspend: false
+  certificateName: example-1
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: example-1
+spec:
+  secretName: example-1-tls
+  issuerRef:
+    kind: Issuer
+    name: local-issuer
+  privateKey:
+    rotationPolicy: Always
+  dnsNames:
+  - example-1.com
