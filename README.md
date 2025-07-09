@@ -2,6 +2,37 @@
 
 A Go project that builds Kubernetes controllers for Fastly services.
 
+## Setup
+
+### Prerequisites
+
+1. **Fastly API Token**: You'll need a Fastly API token to interact with Fastly services.
+
+### Configuration
+
+Before deploying the operator, you need to create a secret file with your Fastly API credentials:
+
+1. **Create the Fastly secret file**:
+   ```bash
+   # Create the secret file
+   cat > config/operator/webhook/fastly-secret.yaml << 'EOF'
+   apiVersion: v1
+   kind: Secret
+   metadata:
+     name: fastly-secret
+     namespace: kube-system
+   type: Opaque
+   stringData:
+     api-key: <YOUR_FASTLY_API_TOKEN_HERE>
+   EOF
+   ```
+
+2. **Replace the placeholder** with your actual Fastly API token:
+   - Edit `config/operator/webhook/fastly-secret.yaml`
+   - Replace `<YOUR_FASTLY_API_TOKEN_HERE>` with your Fastly API token
+
+   > ⚠️  **Security Note**: This file contains sensitive credentials and is ignored by git. Never commit actual API tokens to version control.
+
 ## Project Structure
 
 ```
@@ -18,10 +49,12 @@ fastly-operator/
 ## Quick Start
 
 ```bash
-# Deploy to local kind cluster (builds, creates cluster, and deploys)
+# 1. First, set up your Fastly credentials (see Setup section above)
+
+# 2. Deploy to local kind cluster (builds, creates cluster, and deploys)
 make kind-deploy
 
-# Clean up when done
+# 3. Clean up when done
 make kind-delete
 make clean
 ```
