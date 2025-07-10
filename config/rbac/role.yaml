@@ -5,6 +5,12 @@ metadata:
   name: fastly-operator
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - '*'
+- apiGroups:
   - cert-manager.io
   resources:
   - certificaterequests

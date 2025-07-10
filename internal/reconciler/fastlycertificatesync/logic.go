@@ -2,6 +2,7 @@ package fastlycertificatesync
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
@@ -24,6 +25,7 @@ import (
 //+kubebuilder:rbac:groups=platform.seatgeek.io,resources=fastlycertificatesyncs/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=platform.seatgeek.io,resources=fastlycertificatesyncs/finalizers,verbs=update
 //+kubebuilder:rbac:groups="cert-manager.io",resources=certificaterequests;certificates,verbs=*
+//+kubebuilder:rbac:groups="",resources=secrets,verbs=*
 
 var (
 	msGK = schema.GroupKind{Group: "platform.seatgeek.io", Kind: "FastlyCertificateSync"}
@@ -142,10 +144,16 @@ func (l *Logic) Validate(svc *v1alpha1.FastlyCertificateSync) error {
 func (l *Logic) ObserveResources(ctx *Context) (genrec.Resources, error) {
 	ctx.Log.Info("observing resources for FastlyCertificateSync", "name", ctx.Subject.Name, "namespace", ctx.Subject.Namespace)
 
-	if !l.ObservedState.PrivateKeyUploaded {
-		ctx.Log.Info("We observed the private key wasn't uploaded!")
+	fastlyPrivateKeyExists, err := l.fastlyPrivateKeyExists(ctx)
+	if err != nil {
+		return genrec.Resources{}, err
+	}
 
+	if !fastlyPrivateKeyExists {
 		return genrec.Resources{}, nil
+	} else {
+		ctx.Log.Info("Private key exists in Fastly, updating observed state")
+		l.ObservedState.PrivateKeyUploaded = true
 	}
 
 	return genrec.Resources{}, nil
@@ -156,8 +164,12 @@ func (l *Logic) ApplyUnmanaged(ctx *Context) error {
 
 	if !l.ObservedState.PrivateKeyUploaded {
 		ctx.Log.Info("Private key is not uploaded, doing that now...")
-		// how do I requeue the resource?
 
+		if err := l.createFastlyPrivateKey(ctx); err != nil {
+			return fmt.Errorf("failed to create Fastly private key: %w", err)
+		}
+
+		// Requeue immediately after altering state
 		ctx.Log.Info("Requeueing...")
 		ctx.SetRequeue(0)
 

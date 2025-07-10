@@ -17,18 +17,36 @@ const (
 	defaultFastlyPageSize = 20
 )
 
-func (l *Logic) fastlyPrivateKeyExists(ctx *Context) (bool, error) {
+func (l *Logic) createFastlyPrivateKey(ctx *Context) error {
 
-	// get certificate from subject
-	certificate := &cmv1.Certificate{}
-	if err := ctx.Client.Client.Get(ctx, types.NamespacedName{Name: ctx.Subject.Spec.CertificateName, Namespace: ctx.Subject.ObjectMeta.Namespace}, certificate); err != nil {
-		return false, fmt.Errorf("failed to get certificate of name %s and namespace %s: %w", ctx.Subject.Spec.CertificateName, ctx.Subject.ObjectMeta.Namespace, err)
+	secret, err := getTLSSecretFromContext(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get TLS secret from context: %w", err)
 	}
 
-	// get secret from certificate
-	secret := &corev1.Secret{}
-	if err := ctx.Client.Client.Get(ctx, types.NamespacedName{Name: certificate.Spec.SecretName, Namespace: certificate.Namespace}, secret); err != nil {
-		return false, fmt.Errorf("failed to get secret of name %s and namespace %s: %w", certificate.Spec.SecretName, certificate.Namespace, err)
+	keyPEM, ok := secret.Data["tls.key"]
+	if !ok {
+		return fmt.Errorf("secret %s/%s does not contain tls.key", secret.Namespace, secret.Name)
+	}
+
+	ctx.Log.Info("private key does not exist in Fastly, creating new private key")
+	createResp, err := l.FastlyClient.CreatePrivateKey(&fastly.CreatePrivateKeyInput{
+		Key:  string(keyPEM),
+		Name: secret.Name,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create Fastly private key: %w", err)
+	}
+	ctx.Log.Info("created new private key in Fastly", "key_id", createResp.ID)
+
+	return nil
+}
+
+func (l *Logic) fastlyPrivateKeyExists(ctx *Context) (bool, error) {
+
+	secret, err := getTLSSecretFromContext(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to get TLS secret from context: %w", err)
 	}
 
 	// get private key from secret
@@ -78,6 +96,22 @@ func (l *Logic) fastlyPrivateKeyExists(ctx *Context) (bool, error) {
 	}
 
 	return keyExistsInFastly, nil
+}
+
+func getTLSSecretFromContext(ctx *Context) (*corev1.Secret, error) {
+	// get certificate from subject
+	certificate := &cmv1.Certificate{}
+	if err := ctx.Client.Client.Get(ctx, types.NamespacedName{Name: ctx.Subject.Spec.CertificateName, Namespace: ctx.Subject.ObjectMeta.Namespace}, certificate); err != nil {
+		return nil, fmt.Errorf("failed to get certificate of name %s and namespace %s: %w", ctx.Subject.Spec.CertificateName, ctx.Subject.ObjectMeta.Namespace, err)
+	}
+
+	// get secret from certificate
+	secret := &corev1.Secret{}
+	if err := ctx.Client.Client.Get(ctx, types.NamespacedName{Name: certificate.Spec.SecretName, Namespace: certificate.Namespace}, secret); err != nil {
+		return nil, fmt.Errorf("failed to get secret of name %s and namespace %s: %w", certificate.Spec.SecretName, certificate.Namespace, err)
+	}
+
+	return secret, nil
 }
 
 // GetPublicKeySHA1FromPEM calculates the SHA1 hash of the public key derived from a PEM-encoded private key
