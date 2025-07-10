@@ -5,6 +5,9 @@ metadata:
 spec:
   suspend: false
   certificateName: example-1
+  tlsConfigurationIds:
+  - "FvmqG3m7zgnbyw2PBTzxHw" # (HTTP/3 & TLS v1.3) - configuration IDs are account specific, usage in other accounts will need to change this
+  - "aDDySyCAF3iZzH4ZXW2dEA" # (HTTP/3 & TLS v1.3 + 0RTT) - configuration IDs are account specific, usage in other accounts will need to change this
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate

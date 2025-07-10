@@ -251,6 +251,122 @@ func (l *Logic) isFastlyCertificateStale(ctx *Context, fastlyCertificate *fastly
 	return isStale, nil
 }
 
+func (l *Logic) getFastlyTLSActivationState(ctx *Context) ([]TLSActivationData, []string, error) {
+
+	missingTLSActivationData := []TLSActivationData{}
+	extraTLSActivationIDs := []string{}
+
+	fastlyCertificate, err := l.getFastlyCertificateMatchingSubject(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get Fastly certificate matching subject: %w", err)
+	}
+
+	domainAndConfigurationToActivation, err := l.getFastlyDomainAndConfigurationToActivationMap(ctx, fastlyCertificate)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get Fastly domain and configuration to activation map: %w", err)
+	}
+
+	// For each certificate domain and expected configuration id, report activations that do not exist
+	for _, domain := range fastlyCertificate.Domains {
+		for _, configID := range ctx.Subject.Spec.TLSConfigurationIds {
+			if _, exists := domainAndConfigurationToActivation[domain.ID][configID]; !exists {
+				missingTLSActivationData = append(missingTLSActivationData, TLSActivationData{
+					Certificate:   fastlyCertificate,
+					Configuration: &fastly.TLSConfiguration{ID: configID},
+					Domain:        domain,
+				})
+			} else {
+				ctx.Log.Info("TLS activation already exists", "config_id", configID)
+				// Remove from map since we want to keep this activation
+				delete(domainAndConfigurationToActivation[domain.ID], configID)
+			}
+		}
+	}
+
+	// Any remaining activations in the map should be deleted
+	for _, configToActivation := range domainAndConfigurationToActivation {
+		for _, activation := range configToActivation {
+			extraTLSActivationIDs = append(extraTLSActivationIDs, activation.ID)
+		}
+	}
+
+	return missingTLSActivationData, extraTLSActivationIDs, nil
+}
+
+// Build the mapping of domain -> configuration -> activation for a given certificate
+func (l *Logic) getFastlyDomainAndConfigurationToActivationMap(ctx *Context, cert *fastly.CustomTLSCertificate) (map[string]map[string]*fastly.TLSActivation, error) {
+	var allActivations []*fastly.TLSActivation
+	pageNumber := 1
+
+	for {
+		activations, err := l.FastlyClient.ListTLSActivations(&fastly.ListTLSActivationsInput{
+			FilterTLSCertificateID: cert.ID,
+			PageNumber:             pageNumber,
+			PageSize:               defaultFastlyPageSize,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to list Fastly TLS activations: %w", err)
+		}
+
+		allActivations = append(allActivations, activations...)
+
+		// If we received fewer activations than the page size, we've reached the end
+		if len(activations) < defaultFastlyPageSize {
+			break
+		}
+		pageNumber++
+	}
+
+	ctx.Log.Info(fmt.Sprintf("Found %d TLS activations", len(allActivations)), "domains", cert.Domains)
+
+	// map domain id -> configuration id -> activation
+	domainAndConfigurationToActivation := make(map[string]map[string]*fastly.TLSActivation)
+	for _, activation := range allActivations {
+		if domainAndConfigurationToActivation[activation.Domain.ID] == nil {
+			domainAndConfigurationToActivation[activation.Domain.ID] = make(map[string]*fastly.TLSActivation)
+		}
+		domainAndConfigurationToActivation[activation.Domain.ID][activation.Configuration.ID] = activation
+	}
+	return domainAndConfigurationToActivation, nil
+}
+
+func (l *Logic) createMissingFastlyTLSActivations(ctx *Context) []error {
+	errors := []error{}
+
+	for _, activationData := range l.ObservedState.MissingTLSActivationData {
+		// Create new activation
+		_, err := l.FastlyClient.CreateTLSActivation(&fastly.CreateTLSActivationInput{
+			Certificate:   activationData.Certificate,
+			Configuration: activationData.Configuration,
+			Domain:        activationData.Domain,
+		})
+		if err != nil {
+			errors = append(errors, fmt.Errorf("failed to create TLS activation for config %s: %w", activationData.Configuration.ID, err))
+		}
+	}
+
+	if len(errors) > 0 {
+		return errors
+	}
+	return nil
+}
+
+func (l *Logic) deleteExtraFastlyTLSActivations(ctx *Context) []error {
+	errors := []error{}
+
+	for _, activationID := range l.ObservedState.ExtraTLSActivationIDs {
+		err := l.FastlyClient.DeleteTLSActivation(&fastly.DeleteTLSActivationInput{ID: activationID})
+		if err != nil {
+			errors = append(errors, fmt.Errorf("failed to delete TLS activation %s: %w", activationID, err))
+		}
+	}
+
+	if len(errors) > 0 {
+		return errors
+	}
+	return nil
+}
+
 func (l *Logic) getFastlyUnusedPrivateKeyIDs(ctx *Context) ([]string, error) {
 	privateKeys, err := l.FastlyClient.ListPrivateKeys(&fastly.ListPrivateKeysInput{FilterInUse: "false"})
 	if err != nil {

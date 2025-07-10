@@ -51,6 +51,11 @@ spec:
                 description: Reconciliation of individual resources may be suspended
                   by setting this flag.
                 type: boolean
+              tlsConfigurationIds:
+                description: The list of TLS configuration IDs to sync
+                items:
+                  type: string
+                type: array
             type: object
           status:
             description: FastlyCertificateSyncStatus defines the observed state of

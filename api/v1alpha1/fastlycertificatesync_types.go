@@ -19,6 +19,9 @@ type FastlyCertificateSyncSpec struct {
 
 	// The name of the Certificate resource to sync
 	CertificateName string `json:"certificateName,omitempty" yaml:"certificateName,omitempty"`
+
+	// The list of TLS configuration IDs to sync
+	TLSConfigurationIds []string `json:"tlsConfigurationIds,omitempty" yaml:"tlsConfigurationIds,omitempty"`
 }
 
 // FastlyCertificateSyncStatus defines the observed state of FastlyCertificateSync.

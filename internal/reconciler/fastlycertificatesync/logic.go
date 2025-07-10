@@ -41,10 +41,18 @@ const (
 	CertificateStatusSynced  CertificateStatus = "Synced"
 )
 
+type TLSActivationData struct {
+	Certificate   *fastly.CustomTLSCertificate
+	Configuration *fastly.TLSConfiguration
+	Domain        *fastly.TLSDomain
+}
+
 type ObservedState struct {
-	PrivateKeyUploaded  bool
-	CertificateStatus   CertificateStatus
-	UnusedPrivateKeyIDs []string
+	PrivateKeyUploaded       bool
+	CertificateStatus        CertificateStatus
+	UnusedPrivateKeyIDs      []string
+	MissingTLSActivationData []TLSActivationData
+	ExtraTLSActivationIDs    []string
 }
 
 type Logic struct {
@@ -166,7 +174,13 @@ func (l *Logic) ObserveResources(ctx *Context) (genrec.Resources, error) {
 	}
 	l.ObservedState.CertificateStatus = fastlyCertificateStatus
 
-	// TODO: Implement activations
+	// Third, TLS activations must be present for all desired configurations
+	missingTLSActivationData, extraTLSActivationIDs, err := l.getFastlyTLSActivationState(ctx)
+	if err != nil {
+		return genrec.Resources{}, err
+	}
+	l.ObservedState.MissingTLSActivationData = missingTLSActivationData
+	l.ObservedState.ExtraTLSActivationIDs = extraTLSActivationIDs
 
 	// Lastly, unused private keys must be removed from Fastly
 	unusedPrivateKeyIDs, err := l.getFastlyUnusedPrivateKeyIDs(ctx)
@@ -211,6 +225,28 @@ func (l *Logic) ApplyUnmanaged(ctx *Context) error {
 		ctx.Log.Info("Certificate is stale, updating certificate in Fastly")
 		if err := l.updateFastlyCertificate(ctx); err != nil {
 			return fmt.Errorf("failed to update Fastly certificate: %w", err)
+		}
+
+		ctx.Log.Info("Requeueing...")
+		ctx.SetRequeue(0)
+		return nil
+	}
+
+	if len(l.ObservedState.MissingTLSActivationData) > 0 {
+		ctx.Log.Info("Missing TLS activations found, creating them in Fastly")
+		if err := l.createMissingFastlyTLSActivations(ctx); err != nil {
+			return fmt.Errorf("failed to create Fastly TLS activations: %w", err)
+		}
+
+		ctx.Log.Info("Requeueing...")
+		ctx.SetRequeue(0)
+		return nil
+	}
+
+	if len(l.ObservedState.ExtraTLSActivationIDs) > 0 {
+		ctx.Log.Info("Extra TLS activations found, deleting them from Fastly")
+		if err := l.deleteExtraFastlyTLSActivations(ctx); err != nil {
+			return fmt.Errorf("failed to delete Fastly TLS activations: %w", err)
 		}
 
 		ctx.Log.Info("Requeueing...")
