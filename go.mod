@@ -14,6 +14,7 @@ require (
 	sigs.k8s.io/controller-runtime v0.21.0
 )
 
+// Temporarily point to our go-fastly fork until our changes are merged upstream: https://github.com/fastly/go-fastly/pull/596
 replace github.com/fastly/go-fastly/v10 => github.com/seatgeek/go-fastly/v10 v10.0.0-20250710151712-3b8a5be5d9a1
 
 require (
