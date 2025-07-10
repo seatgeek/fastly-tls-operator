@@ -34,11 +34,18 @@ var (
 type Context = genrec.Context[*v1alpha1.FastlyCertificateSync, *Config]
 
 type CertificateStatus string
+type TLSActivationState string
 
 const (
 	CertificateStatusMissing CertificateStatus = "Missing"
 	CertificateStatusStale   CertificateStatus = "Stale"
 	CertificateStatusSynced  CertificateStatus = "Synced"
+)
+
+const (
+	TLSActivationStateMissing TLSActivationState = "Missing"
+	TLSActivationStateExtra   TLSActivationState = "Extra"
+	TLSActivationStateSynced  TLSActivationState = "Synced"
 )
 
 type TLSActivationData struct {

@@ -29,10 +29,14 @@ type FastlyCertificateSyncStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 	apiobjects.SubjectStatus `json:",inline" yaml:",inline"`
+
+	Ready      bool               `json:"ready" yaml:"ready"`
+	Conditions []metav1.Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Ready",type="boolean",JSONPath=".status.ready"
 // +kubebuilder:printcolumn:name="Suspended",type="boolean",JSONPath=".spec.suspend"
 
 // FastlyCertificateSync is the Schema for the fastlycertificatesyncs API.
