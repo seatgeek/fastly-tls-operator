@@ -33,10 +33,17 @@ var (
 
 type Context = genrec.Context[*v1alpha1.FastlyCertificateSync, *Config]
 
+type CertificateStatus string
+
+const (
+	CertificateStatusMissing CertificateStatus = "Missing"
+	CertificateStatusStale   CertificateStatus = "Stale"
+	CertificateStatusSynced  CertificateStatus = "Synced"
+)
+
 type ObservedState struct {
-	PrivateKeyUploaded    bool
-	CertificateUploaded   bool
-	DNSActivationsCreated bool
+	PrivateKeyUploaded bool
+	CertificateStatus  CertificateStatus
 }
 
 type Logic struct {
@@ -144,7 +151,8 @@ func (l *Logic) Validate(svc *v1alpha1.FastlyCertificateSync) error {
 func (l *Logic) ObserveResources(ctx *Context) (genrec.Resources, error) {
 	ctx.Log.Info("observing resources for FastlyCertificateSync", "name", ctx.Subject.Name, "namespace", ctx.Subject.Namespace)
 
-	fastlyPrivateKeyExists, err := l.fastlyPrivateKeyExists(ctx)
+	// First, the private key must exist in Fastly
+	fastlyPrivateKeyExists, err := l.getFastlyPrivateKeyExists(ctx)
 	if err != nil {
 		return genrec.Resources{}, err
 	}
@@ -155,6 +163,16 @@ func (l *Logic) ObserveResources(ctx *Context) (genrec.Resources, error) {
 		ctx.Log.Info("Private key exists in Fastly, updating observed state")
 		l.ObservedState.PrivateKeyUploaded = true
 	}
+
+	// Second, the certificate must be present and up to date (synced) in Fastly
+	//	fastlyCertificateStatus, err := l.getFastlyCertificateStatus(ctx)
+	//	if err != nil {
+	//		return genrec.Resources{}, err
+	//	}
+
+	//	if *fastlyCertificateStatus == CertificateStatusMissing {
+	//		return genrec.Resources{}, nil
+	//	}
 
 	return genrec.Resources{}, nil
 }
