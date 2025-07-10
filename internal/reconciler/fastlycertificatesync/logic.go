@@ -42,8 +42,9 @@ const (
 )
 
 type ObservedState struct {
-	PrivateKeyUploaded bool
-	CertificateStatus  CertificateStatus
+	PrivateKeyUploaded  bool
+	CertificateStatus   CertificateStatus
+	UnusedPrivateKeyIDs []string
 }
 
 type Logic struct {
@@ -165,6 +166,15 @@ func (l *Logic) ObserveResources(ctx *Context) (genrec.Resources, error) {
 	}
 	l.ObservedState.CertificateStatus = fastlyCertificateStatus
 
+	// TODO: Implement activations
+
+	// Lastly, unused private keys must be removed from Fastly
+	unusedPrivateKeyIDs, err := l.getFastlyUnusedPrivateKeyIDs(ctx)
+	if err != nil {
+		return genrec.Resources{}, err
+	}
+	l.ObservedState.UnusedPrivateKeyIDs = unusedPrivateKeyIDs
+
 	return genrec.Resources{}, nil
 }
 
@@ -208,7 +218,16 @@ func (l *Logic) ApplyUnmanaged(ctx *Context) error {
 		return nil
 	}
 
-	ctx.Log.Info("Certificate is in sync, no action required")
+	if len(l.ObservedState.UnusedPrivateKeyIDs) > 0 {
+		ctx.Log.Info("Unused private keys found, deleting them from Fastly")
+		if err := l.clearFastlyUnusedPrivateKeys(ctx); err != nil {
+			return fmt.Errorf("failed to clear Fastly unused private keys: %w", err)
+		}
+
+		ctx.Log.Info("Requeueing...")
+		ctx.SetRequeue(0)
+		return nil
+	}
 
 	return nil
 }

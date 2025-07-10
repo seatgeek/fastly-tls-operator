@@ -198,9 +198,19 @@ func (l *Logic) updateFastlyCertificate(ctx *Context) error {
 		return fmt.Errorf("failed to get CertPEM for Fastly certificate: %w", err)
 	}
 
+	fastlyCertificate, err := l.getFastlyCertificateMatchingSubject(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get Fastly certificate matching subject: %w", err)
+	}
+
+	if fastlyCertificate == nil {
+		return fmt.Errorf("fastly certificate not found")
+	}
+
 	_, err = l.FastlyClient.UpdateCustomTLSCertificate(&fastly.UpdateCustomTLSCertificateInput{
 		CertBlob:           string(certPEM),
 		Name:               subjectCertificate.Name,
+		ID:                 fastlyCertificate.ID,
 		AllowUntrustedRoot: ctx.Config.HackFastlyCertificateSyncLocalReconciliation,
 	})
 	if err != nil {
@@ -239,4 +249,32 @@ func (l *Logic) isFastlyCertificateStale(ctx *Context, fastlyCertificate *fastly
 	// Differing serial numbers indicates that the fastlyCertificate doesn't match local and is stale
 	isStale := fastlyCertificate.SerialNumber != serialNumber
 	return isStale, nil
+}
+
+func (l *Logic) getFastlyUnusedPrivateKeyIDs(ctx *Context) ([]string, error) {
+	privateKeys, err := l.FastlyClient.ListPrivateKeys(&fastly.ListPrivateKeysInput{FilterInUse: "false"})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list Fastly private keys: %w", err)
+	}
+
+	unusedPrivateKeyIDs := []string{}
+	for _, key := range privateKeys {
+		unusedPrivateKeyIDs = append(unusedPrivateKeyIDs, key.ID)
+	}
+	return unusedPrivateKeyIDs, nil
+}
+
+func (l *Logic) clearFastlyUnusedPrivateKeys(ctx *Context) error {
+	for _, privateKeyID := range l.ObservedState.UnusedPrivateKeyIDs {
+		ctx.Log.Info(fmt.Sprintf("attempting to delete unused private key %s", privateKeyID))
+		if err := l.FastlyClient.DeletePrivateKey(&fastly.DeletePrivateKeyInput{ID: privateKeyID}); err != nil {
+			// Deleting a private key has some inconsistencies on Fastly's end.
+			// It is never critical to delete a private key, we only need deletion to be eventually consistent.
+			// We effectively swallow the error, but notify via an info log that wont trigger a monitor.
+			ctx.Log.Info(fmt.Sprintf("Failed to delete Fastly private key %s: %v. This is not critical, there are often race conditions when querying for unused private keys", privateKeyID, err))
+			return nil
+		}
+	}
+
+	return nil
 }
