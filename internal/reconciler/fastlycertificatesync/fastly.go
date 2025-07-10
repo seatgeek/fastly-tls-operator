@@ -1,6 +1,8 @@
 package fastlycertificatesync
 
 import (
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
@@ -14,7 +16,7 @@ const (
 
 func (l *Logic) getFastlyPrivateKeyExists(ctx *Context) (bool, error) {
 
-	secret, err := getTLSSecretFromSubject(ctx)
+	_, secret, err := getCertificateAndTLSSecretFromSubject(ctx)
 	if err != nil {
 		return false, fmt.Errorf("failed to get TLS secret from context: %w", err)
 	}
@@ -70,7 +72,7 @@ func (l *Logic) getFastlyPrivateKeyExists(ctx *Context) (bool, error) {
 
 func (l *Logic) createFastlyPrivateKey(ctx *Context) error {
 
-	secret, err := getTLSSecretFromSubject(ctx)
+	_, secret, err := getCertificateAndTLSSecretFromSubject(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get TLS secret from context: %w", err)
 	}
@@ -99,14 +101,23 @@ func (l *Logic) getFastlyCertificateStatus(ctx *Context) (CertificateStatus, err
 		return "", fmt.Errorf("failed to get Fastly certificate matching subject: %w", err)
 	}
 
-	// an empty certificate means the certificate is not present in Fastly
+	// Empty fastlyCertificates means the certificate is not present in Fastly and must be created
 	if fastlyCertificate == nil {
 		return CertificateStatusMissing, nil
 	}
-	// is the returned certificate up to date with the subject certificate?
-	return CertificateStatusStale, nil
 
-	//return "", nil
+	isFastlyCertificateStale, err := l.isFastlyCertificateStale(ctx, fastlyCertificate)
+	if err != nil {
+		return "", fmt.Errorf("failed to check if certificate is stale: %w", err)
+	}
+
+	// Stale fastlyCertificates will be updated with the latest local certificate
+	if isFastlyCertificateStale {
+		return CertificateStatusStale, nil
+	}
+
+	// Non-stale fastlyCertificates are in sync with the local certificate and do not need to be updated
+	return CertificateStatusSynced, nil
 }
 
 // Get the Fastly certificate whose details match the certificate referenced by the subject
@@ -150,4 +161,82 @@ func (l *Logic) getFastlyCertificateMatchingSubject(ctx *Context) (*fastly.Custo
 
 	// no match found
 	return nil, nil
+}
+
+func (l *Logic) createFastlyCertificate(ctx *Context) error {
+
+	subjectCertificate, tlsSecret, err := getCertificateAndTLSSecretFromSubject(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get TLS secret from context: %w", err)
+	}
+
+	certPEM, err := getCertPEMForSecret(ctx, tlsSecret)
+	if err != nil {
+		return fmt.Errorf("failed to get CertPEM for Fastly certificate: %w", err)
+	}
+
+	_, err = l.FastlyClient.CreateCustomTLSCertificate(&fastly.CreateCustomTLSCertificateInput{
+		CertBlob:           string(certPEM),
+		Name:               subjectCertificate.Name,
+		AllowUntrustedRoot: ctx.Config.HackFastlyCertificateSyncLocalReconciliation,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create Fastly certificate: %w", err)
+	}
+
+	return nil
+}
+
+func (l *Logic) updateFastlyCertificate(ctx *Context) error {
+	subjectCertificate, tlsSecret, err := getCertificateAndTLSSecretFromSubject(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get TLS secret from context: %w", err)
+	}
+
+	certPEM, err := getCertPEMForSecret(ctx, tlsSecret)
+	if err != nil {
+		return fmt.Errorf("failed to get CertPEM for Fastly certificate: %w", err)
+	}
+
+	_, err = l.FastlyClient.UpdateCustomTLSCertificate(&fastly.UpdateCustomTLSCertificateInput{
+		CertBlob:           string(certPEM),
+		Name:               subjectCertificate.Name,
+		AllowUntrustedRoot: ctx.Config.HackFastlyCertificateSyncLocalReconciliation,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update Fastly certificate: %w", err)
+	}
+
+	return nil
+}
+
+func (l *Logic) isFastlyCertificateStale(ctx *Context, fastlyCertificate *fastly.CustomTLSCertificate) (bool, error) {
+
+	subjectCertificate, tlsSecret, err := getCertificateAndTLSSecretFromSubject(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to get TLS secret from context: %w", err)
+	}
+
+	certPEM, err := getCertPEMForSecret(ctx, tlsSecret)
+	if err != nil {
+		return false, fmt.Errorf("failed to get cert PEM for secret: %w", err)
+	}
+
+	block, _ := pem.Decode(certPEM)
+	if block == nil {
+		return false, fmt.Errorf("failed to decode PEM block")
+	}
+
+	// serialNumber comparison is used to determine if the local certificate was refreshed
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse certificate: %w", err)
+	}
+	serialNumber := cert.SerialNumber.String()
+
+	ctx.Log.Info("checking serial number of existing fastly certificate against local value", "domains", subjectCertificate.Spec.DNSNames, "fastly_cert_serial_number", fastlyCertificate.SerialNumber, "local_cert_serial_number", serialNumber)
+
+	// Differing serial numbers indicates that the fastlyCertificate doesn't match local and is stale
+	isStale := fastlyCertificate.SerialNumber != serialNumber
+	return isStale, nil
 }

@@ -14,20 +14,20 @@ import (
 
 // Helper function to retrieve the TLS secret from the context.
 // Gets the certificate from the subject reference, and then gets the secret from the certificate reference.
-func getTLSSecretFromSubject(ctx *Context) (*corev1.Secret, error) {
+func getCertificateAndTLSSecretFromSubject(ctx *Context) (*cmv1.Certificate, *corev1.Secret, error) {
 	// get certificate from subject
 	certificate := &cmv1.Certificate{}
 	if err := ctx.Client.Client.Get(ctx, types.NamespacedName{Name: ctx.Subject.Spec.CertificateName, Namespace: ctx.Subject.ObjectMeta.Namespace}, certificate); err != nil {
-		return nil, fmt.Errorf("failed to get certificate of name %s and namespace %s: %w", ctx.Subject.Spec.CertificateName, ctx.Subject.ObjectMeta.Namespace, err)
+		return nil, nil, fmt.Errorf("failed to get certificate of name %s and namespace %s: %w", ctx.Subject.Spec.CertificateName, ctx.Subject.ObjectMeta.Namespace, err)
 	}
 
 	// get secret from certificate
 	secret := &corev1.Secret{}
 	if err := ctx.Client.Client.Get(ctx, types.NamespacedName{Name: certificate.Spec.SecretName, Namespace: certificate.Namespace}, secret); err != nil {
-		return nil, fmt.Errorf("failed to get secret of name %s and namespace %s: %w", certificate.Spec.SecretName, certificate.Namespace, err)
+		return nil, nil, fmt.Errorf("failed to get secret of name %s and namespace %s: %w", certificate.Spec.SecretName, certificate.Namespace, err)
 	}
 
-	return secret, nil
+	return certificate, secret, nil
 }
 
 // GetPublicKeySHA1FromPEM calculates the SHA1 hash of the public key derived from a PEM-encoded private key

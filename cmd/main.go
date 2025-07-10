@@ -44,13 +44,14 @@ func init() {
 }
 
 type cliFlags struct {
-	metricsAddr          string
-	enableLeaderElection bool
-	probeAddr            string
-	leaderElectionID     string
-	syncPeriod           time.Duration
-	webhookPort          int
-	webhookCertDir       string
+	metricsAddr                                  string
+	enableLeaderElection                         bool
+	probeAddr                                    string
+	leaderElectionID                             string
+	syncPeriod                                   time.Duration
+	webhookPort                                  int
+	webhookCertDir                               string
+	hackFastlyCertificateSyncLocalReconciliation bool
 }
 
 // BindFlags will parse the given flagset
@@ -61,6 +62,7 @@ func (c *cliFlags) BindFlags(fs *flag.FlagSet) {
 	fs.DurationVar(&(c.syncPeriod), "sync-period", c.syncPeriod, "Maximum delay between reconciles of any object.")
 	fs.IntVar(&(c.webhookPort), "webhook-port", c.webhookPort, "Webhook bind port")
 	fs.StringVar(&(c.webhookCertDir), "webhook-cert-dir", c.webhookCertDir, "Certs used to terminate TLS for webhook server")
+	fs.BoolVar(&(c.hackFastlyCertificateSyncLocalReconciliation), "hack-fastly-certificate-sync-local-reconciliation", c.hackFastlyCertificateSyncLocalReconciliation, "Enable local reconciliation for Fastly certificate sync")
 }
 
 func main() {
@@ -72,6 +74,7 @@ func main() {
 		syncPeriod:           4 * time.Hour,
 		webhookPort:          9443,
 		webhookCertDir:       "/var/run/webhook-serving-certs",
+		hackFastlyCertificateSyncLocalReconciliation: false,
 	}
 
 	opts.BindFlags(flag.CommandLine)
@@ -102,7 +105,9 @@ func main() {
 	config.WrapTransport = transport.DebugWrappers
 
 	// populate the runtime config struct for the controller
-	controllerRuntimeConfig := fastlycertificatesync.RuntimeConfig{}
+	controllerRuntimeConfig := fastlycertificatesync.RuntimeConfig{
+		HackFastlyCertificateSyncLocalReconciliation: opts.hackFastlyCertificateSyncLocalReconciliation,
+	}
 
 	mgr, err := ctrl.NewManager(config, ctrl.Options{
 		Scheme: scheme,

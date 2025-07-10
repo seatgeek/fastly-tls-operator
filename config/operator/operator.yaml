@@ -36,6 +36,8 @@ spec:
         args:
         - '-leader-election=true'
         - '-webhook-port=9443'
+        # enable this only for local development
+        - '-hack-fastly-certificate-sync-local-reconciliation=true'
         ports:
         - containerPort: 8080
           name: http-metrics

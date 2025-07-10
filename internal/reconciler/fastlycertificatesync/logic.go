@@ -187,7 +187,10 @@ func (l *Logic) ApplyUnmanaged(ctx *Context) error {
 
 	if l.ObservedState.CertificateStatus == CertificateStatusMissing {
 		ctx.Log.Info("Certificate is missing, creating new certificate in Fastly")
-		// TODO: Implement certificate creation
+		if err := l.createFastlyCertificate(ctx); err != nil {
+			return fmt.Errorf("failed to create Fastly certificate: %w", err)
+		}
+
 		ctx.Log.Info("Requeueing...")
 		ctx.SetRequeue(0)
 
@@ -196,11 +199,16 @@ func (l *Logic) ApplyUnmanaged(ctx *Context) error {
 
 	if l.ObservedState.CertificateStatus == CertificateStatusStale {
 		ctx.Log.Info("Certificate is stale, updating certificate in Fastly")
-		// TODO: Implement certificate update
+		if err := l.updateFastlyCertificate(ctx); err != nil {
+			return fmt.Errorf("failed to update Fastly certificate: %w", err)
+		}
+
 		ctx.Log.Info("Requeueing...")
 		ctx.SetRequeue(0)
 		return nil
 	}
+
+	ctx.Log.Info("Certificate is in sync, no action required")
 
 	return nil
 }

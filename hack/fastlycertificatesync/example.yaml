@@ -10,12 +10,21 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: example-1
+  annotations:
+    platform.seatgeek.io/enable-fastly-sync: "true"
 spec:
+  commonName: example-1.com
   secretName: example-1-tls
+  isCA: false
+  duration: 1h
+  renewBefore: 5m
+  usages:
+    - server auth
   issuerRef:
     kind: Issuer
     name: local-issuer
   privateKey:
     rotationPolicy: Always
   dnsNames:
-  - example-1.com
+  - "example-1.com"
+  - "*.example-1.com"
