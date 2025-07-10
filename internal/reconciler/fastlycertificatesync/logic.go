@@ -156,23 +156,14 @@ func (l *Logic) ObserveResources(ctx *Context) (genrec.Resources, error) {
 	if err != nil {
 		return genrec.Resources{}, err
 	}
-
-	if !fastlyPrivateKeyExists {
-		return genrec.Resources{}, nil
-	} else {
-		ctx.Log.Info("Private key exists in Fastly, updating observed state")
-		l.ObservedState.PrivateKeyUploaded = true
-	}
+	l.ObservedState.PrivateKeyUploaded = fastlyPrivateKeyExists
 
 	// Second, the certificate must be present and up to date (synced) in Fastly
-	//	fastlyCertificateStatus, err := l.getFastlyCertificateStatus(ctx)
-	//	if err != nil {
-	//		return genrec.Resources{}, err
-	//	}
-
-	//	if *fastlyCertificateStatus == CertificateStatusMissing {
-	//		return genrec.Resources{}, nil
-	//	}
+	fastlyCertificateStatus, err := l.getFastlyCertificateStatus(ctx)
+	if err != nil {
+		return genrec.Resources{}, err
+	}
+	l.ObservedState.CertificateStatus = fastlyCertificateStatus
 
 	return genrec.Resources{}, nil
 }
@@ -191,6 +182,23 @@ func (l *Logic) ApplyUnmanaged(ctx *Context) error {
 		ctx.Log.Info("Requeueing...")
 		ctx.SetRequeue(0)
 
+		return nil
+	}
+
+	if l.ObservedState.CertificateStatus == CertificateStatusMissing {
+		ctx.Log.Info("Certificate is missing, creating new certificate in Fastly")
+		// TODO: Implement certificate creation
+		ctx.Log.Info("Requeueing...")
+		ctx.SetRequeue(0)
+
+		return nil
+	}
+
+	if l.ObservedState.CertificateStatus == CertificateStatusStale {
+		ctx.Log.Info("Certificate is stale, updating certificate in Fastly")
+		// TODO: Implement certificate update
+		ctx.Log.Info("Requeueing...")
+		ctx.SetRequeue(0)
 		return nil
 	}
 

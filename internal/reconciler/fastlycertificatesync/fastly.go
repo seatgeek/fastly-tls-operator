@@ -3,7 +3,9 @@ package fastlycertificatesync
 import (
 	"fmt"
 
+	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	"github.com/fastly/go-fastly/v10/fastly"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -12,7 +14,7 @@ const (
 
 func (l *Logic) getFastlyPrivateKeyExists(ctx *Context) (bool, error) {
 
-	secret, err := getTLSSecretFromContext(ctx)
+	secret, err := getTLSSecretFromSubject(ctx)
 	if err != nil {
 		return false, fmt.Errorf("failed to get TLS secret from context: %w", err)
 	}
@@ -68,7 +70,7 @@ func (l *Logic) getFastlyPrivateKeyExists(ctx *Context) (bool, error) {
 
 func (l *Logic) createFastlyPrivateKey(ctx *Context) error {
 
-	secret, err := getTLSSecretFromContext(ctx)
+	secret, err := getTLSSecretFromSubject(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get TLS secret from context: %w", err)
 	}
@@ -90,6 +92,62 @@ func (l *Logic) createFastlyPrivateKey(ctx *Context) error {
 	return nil
 }
 
-func (l *Logic) getFastlyCertificateStatus(ctx *Context) (*CertificateStatus, error) {
+func (l *Logic) getFastlyCertificateStatus(ctx *Context) (CertificateStatus, error) {
+
+	fastlyCertificate, err := l.getFastlyCertificateMatchingSubject(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to get Fastly certificate matching subject: %w", err)
+	}
+
+	// an empty certificate means the certificate is not present in Fastly
+	if fastlyCertificate == nil {
+		return CertificateStatusMissing, nil
+	}
+	// is the returned certificate up to date with the subject certificate?
+	return CertificateStatusStale, nil
+
+	//return "", nil
+}
+
+// Get the Fastly certificate whose details match the certificate referenced by the subject
+func (l *Logic) getFastlyCertificateMatchingSubject(ctx *Context) (*fastly.CustomTLSCertificate, error) {
+
+	subjectCertificate := &cmv1.Certificate{}
+	if err := ctx.Client.Client.Get(ctx, types.NamespacedName{Name: ctx.Subject.Spec.CertificateName, Namespace: ctx.Subject.ObjectMeta.Namespace}, subjectCertificate); err != nil {
+		return nil, fmt.Errorf("failed to get certificate of name %s and namespace %s: %w", ctx.Subject.Spec.CertificateName, ctx.Subject.ObjectMeta.Namespace, err)
+	}
+
+	// List existing certificates in Fastly
+	var allCerts []*fastly.CustomTLSCertificate
+	pageNumber := 1
+
+	for {
+		certs, err := l.FastlyClient.ListCustomTLSCertificates(&fastly.ListCustomTLSCertificatesInput{
+			PageNumber: pageNumber,
+			PageSize:   defaultFastlyPageSize,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to list Fastly certificates: %w", err)
+		}
+
+		allCerts = append(allCerts, certs...)
+
+		// If we received fewer certificates than the page size, we've reached the end
+		if len(certs) < defaultFastlyPageSize {
+			break
+		}
+		pageNumber++
+	}
+
+	ctx.Log.Info(fmt.Sprintf("found %d certificates", len(allCerts)))
+
+	// match certificate based on name
+	for _, cert := range allCerts {
+		if cert.Name == subjectCertificate.Name {
+			return cert, nil
+		}
+	}
+
+	// no match found
 	return nil, nil
 }

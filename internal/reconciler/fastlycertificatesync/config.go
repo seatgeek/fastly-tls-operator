@@ -8,4 +8,5 @@ type RuntimeConfig struct {
 // Config wraps the runtime configuration
 type Config struct {
 	RuntimeConfig
+	HackFastlyCertificateSyncLocalReconciliation bool
 }

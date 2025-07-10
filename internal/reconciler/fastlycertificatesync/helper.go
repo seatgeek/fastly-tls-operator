@@ -14,7 +14,7 @@ import (
 
 // Helper function to retrieve the TLS secret from the context.
 // Gets the certificate from the subject reference, and then gets the secret from the certificate reference.
-func getTLSSecretFromContext(ctx *Context) (*corev1.Secret, error) {
+func getTLSSecretFromSubject(ctx *Context) (*corev1.Secret, error) {
 	// get certificate from subject
 	certificate := &cmv1.Certificate{}
 	if err := ctx.Client.Client.Get(ctx, types.NamespacedName{Name: ctx.Subject.Spec.CertificateName, Namespace: ctx.Subject.ObjectMeta.Namespace}, certificate); err != nil {
@@ -67,4 +67,28 @@ func getPublicKeySHA1FromPEM(keyPEM []byte) (string, error) {
 
 	sha1String := hex.EncodeToString(hashValue)
 	return sha1String, nil
+}
+
+// get the certPEM byte slice for the given secret.
+// abstract away the details around local reconciliation vs. trusted issuers.
+func getCertPEMForSecret(ctx *Context, secret *corev1.Secret) ([]byte, error) {
+	// Get certificate details from secret
+	certPEM, ok := secret.Data["tls.crt"]
+	if !ok {
+		return nil, fmt.Errorf("secret %s/%s does not contain tls.crt", secret.Namespace, secret.Name)
+	}
+
+	// in a local environment, we need to provide the entire chain of trust and append caCertPEM details to the certPEM
+	// in a production scenario with a trusted issuer, we don't need to provide the root details since Fastly will already have them.
+	if ctx.Config.HackFastlyCertificateSyncLocalReconciliation {
+		ctx.Log.Info("local environment detected, appending root CA details")
+		// Attempt to get the root CA certificate details from the secret, if required.
+		// We cannot proceed if this is not present when in our local reconciliation mode.
+		caCertPEM, ok := secret.Data["ca.crt"]
+		if !ok {
+			return nil, fmt.Errorf("secret %s/%s does not contain ca.crt", secret.Namespace, secret.Name)
+		}
+		certPEM = append(certPEM, caCertPEM...)
+	}
+	return certPEM, nil
 }
