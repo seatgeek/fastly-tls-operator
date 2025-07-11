@@ -1,0 +1,17 @@
+{{- if .Values.webhook.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "fastly-operator.fullname" . }}-webhook
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "fastly-operator.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "fastly-operator.selectorLabels" . | nindent 4 }}
+  type: {{ .Values.service.type }}
+  ports:
+  - port: {{ .Values.service.port }}
+    name: webhook
+    targetPort: {{ .Values.service.targetPort }}
+{{- end }} 

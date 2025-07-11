@@ -15,10 +15,10 @@ This document outlines the comprehensive plan for creating, testing, and publish
 ## Phase 1: Chart Structure Creation
 
 ### 1.1 Initialize Helm Chart
-- [ ] Create `charts/fastly-operator` directory
-- [ ] Initialize chart with `helm create`
-- [ ] Clean up default template files
-- [ ] Set up proper directory structure
+- [x] Create `charts/fastly-operator` directory
+- [x] Initialize chart with `helm create`
+- [x] Clean up default template files
+- [x] Set up proper directory structure
 
 **Deliverables:**
 - Basic chart structure with proper organization
@@ -48,11 +48,11 @@ charts/fastly-operator/
 ```
 
 ### 1.3 Convert Existing Manifests
-- [ ] Convert `config/operator/operator.yaml` to `templates/deployment.yaml`
-- [ ] Convert `config/rbac/*.yaml` to `templates/rbac/`
-- [ ] Convert CRDs to `templates/crds/`
-- [ ] Convert webhook configs to `templates/webhook/`
-- [ ] Add proper templating and value substitution
+- [x] Convert `config/operator/operator.yaml` to `templates/deployment.yaml`
+- [x] Convert `config/rbac/*.yaml` to `templates/rbac/`
+- [x] Convert CRDs to `templates/crds/`
+- [x] Convert webhook configs to `templates/webhook/`
+- [x] Add proper templating and value substitution
 
 **Deliverables:**
 - All existing manifests converted to Helm templates

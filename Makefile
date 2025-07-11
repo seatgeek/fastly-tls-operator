@@ -40,7 +40,7 @@ help:
 	@echo "  kind-delete   - Delete kind cluster"
 	@echo "  clean         - Clean build artifacts"
 	@echo "  generate      - Generate code (DeepCopy, etc.)"
-	@echo "  manifests     - Generate CRDs and RBAC"
+	@echo "  manifests     - Generate CRDs and RBAC, sync to Helm chart"
 	@echo "  install       - Install CRDs into cluster"
 	@echo "  apply-examples - Apply example resources"
 
@@ -120,6 +120,9 @@ generate: controller-gen
 # Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects
 manifests: controller-gen
 	$(CONTROLLER_GEN) rbac:roleName=$(OPERATOR_NAME) crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases output:webhook:dir=config/operator/webhook
+	@echo "Syncing CRDs to Helm chart..."
+	@mkdir -p charts/fastly-operator/crds
+	@cp config/crd/bases/*.yaml charts/fastly-operator/crds/
 
 # Download kustomize locally if necessary
 kustomize: $(KUSTOMIZE)

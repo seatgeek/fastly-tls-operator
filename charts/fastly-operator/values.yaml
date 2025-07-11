@@ -1,0 +1,111 @@
+# Default values for fastly-operator.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: fastly-operator
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsUser: 65532
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+
+# Fastly API configuration
+fastly:
+  # Name of the secret containing the Fastly API key
+  # Users are responsible for creating the secret themselves and referring to it here
+  secretName: fastly-secret
+  # Key within the secret containing the API key
+  secretKey: api-key
+
+# Operator configuration
+operator:
+  # Enable leader election for high availability
+  leaderElection: true
+  # Port for the webhook server
+  webhookPort: 9443
+  # Enable local reconciliation for development (should be false in production)
+  localReconciliation: false
+  # Probe configuration
+  probes:
+    liveness:
+      initialDelaySeconds: 3
+      periodSeconds: 2
+    readiness:
+      initialDelaySeconds: 3
+      periodSeconds: 2
+
+# Resource limits and requests
+resources:
+  requests:
+    memory: "64Mi"
+    cpu: "250m"
+  limits:
+    memory: "128Mi"
+    cpu: "500m"
+
+# Service configuration for webhook
+service:
+  type: ClusterIP
+  port: 443
+  targetPort: webhook-server
+
+# RBAC configuration
+rbac:
+  # Specifies whether RBAC resources should be created
+  create: true
+
+# Node selector for pod assignment
+nodeSelector: {}
+
+# Tolerations for pod assignment
+tolerations: []
+
+# Affinity for pod assignment
+affinity: {}
+
+# Certificate configuration for webhook
+webhook:
+  # Enable webhook certificate management
+  enabled: true
+  # Webhook failure policy (Fail or Ignore)
+  failurePolicy: Fail
+  # Webhook timeout in seconds
+  timeoutSeconds: 5
+  # Use cert-manager for certificate generation
+  certManager:
+    enabled: true
+    # Duration for the certificate
+    duration: 8760h # 1 year
+    # Renew before expiration
+    renewBefore: 720h # 30 days

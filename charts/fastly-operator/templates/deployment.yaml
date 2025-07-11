@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "fastly-operator.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "fastly-operator.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "fastly-operator.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "fastly-operator.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "fastly-operator.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      volumes:
+      - name: webhook-tls
+        secret:
+          secretName: {{ include "fastly-operator.fullname" . }}-webhook-tls
+      containers:
+      - name: operator
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        env:
+        - name: FASTLY_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.fastly.secretName }}
+              key: {{ .Values.fastly.secretKey }}
+        args:
+        - '-leader-election={{ .Values.operator.leaderElection }}'
+        - '-webhook-port={{ .Values.operator.webhookPort }}'
+        {{- if .Values.operator.localReconciliation }}
+        - '-hack-fastly-certificate-sync-local-reconciliation=true'
+        {{- end }}
+        ports:
+        - containerPort: 8080
+          name: http-metrics
+        - containerPort: 8081
+          name: health
+        - containerPort: {{ .Values.operator.webhookPort }}
+          name: webhook-server
+        volumeMounts:
+        - name: webhook-tls
+          mountPath: /var/run/webhook-serving-certs
+          readOnly: true
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: health
+          initialDelaySeconds: {{ .Values.operator.probes.liveness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.operator.probes.liveness.periodSeconds }}
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: health
+          initialDelaySeconds: {{ .Values.operator.probes.readiness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.operator.probes.readiness.periodSeconds }}
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 10 }} 

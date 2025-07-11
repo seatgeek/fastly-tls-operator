@@ -1,0 +1,52 @@
+{{- if .Values.rbac.create -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "fastly-operator.fullname" . }}
+  labels:
+    {{- include "fastly-operator.labels" . | nindent 4 }}
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - cert-manager.io
+  resources:
+  - certificaterequests
+  - certificates
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - platform.seatgeek.io
+  resources:
+  - fastlycertificatesyncs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - platform.seatgeek.io
+  resources:
+  - fastlycertificatesyncs/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - platform.seatgeek.io
+  resources:
+  - fastlycertificatesyncs/status
+  verbs:
+  - get
+  - patch
+  - update
+{{- end }} 
