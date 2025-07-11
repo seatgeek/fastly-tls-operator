@@ -61,35 +61,49 @@ charts/fastly-operator/
 ## Phase 2: Local Development and Testing
 
 ### 2.1 Create Testing Infrastructure
-- [ ] Create `scripts/test-helm-chart.sh` script
-- [ ] Add kind cluster creation logic
-- [ ] Include cert-manager installation
-- [ ] Add chart installation and validation
+- [x] Create `scripts/test-helm-chart.sh` script
+- [x] Add kind cluster creation logic
+- [x] Include cert-manager installation
+- [x] Add chart installation and validation
 
 **Deliverables:**
-- Automated testing script for local development
-- Integration with existing build process
+- ✅ Automated testing script for local development
+- ✅ Integration with existing build process
+
+**Status:** ✅ **COMPLETE** - Script created and verified working
 
 ### 2.2 Update Makefile
-- [ ] Add `helm-test` target
-- [ ] Add `helm-lint` target  
-- [ ] Add `helm-template` target
-- [ ] Add `helm-all` target
+- [ ] Add `helm-lint` target (local-only: runs `helm lint` on chart)
+- [ ] Add `helm-template` target (local-only: runs `helm template` to render templates)
+- [ ] Add `helm-test` target (local-only: basic chart validation without cluster)
+- [ ] Add `helm-validate-all` target (local-only: runs helm-lint, helm-template, and helm-test)
+- [ ] Add `helm-integration-test` target (cluster-based: runs the test script)
 - [ ] Update `kind-deploy` to support Helm option
 
 **Deliverables:**
 - Enhanced Makefile with Helm support
 - Consistent development workflow
+- Local-only validation targets for fast feedback
+- Cluster-based integration testing
+
+**Notes:**
+- `helm-lint`, `helm-template`, and `helm-test` are local-only and do not require kind cluster
+- `helm-validate-all` combines all local validation targets for comprehensive local testing
+- `helm-integration-test` uses the existing test script for full cluster testing
 
 ### 2.3 Create Validation Tests
-- [ ] Implement chart linting
-- [ ] Add template rendering tests
-- [ ] Include manifest validation (kubeval)
-- [ ] Test installation in kind cluster
+- [ ] Implement chart linting (covered by `helm-lint` target in 2.2)
+- [ ] Add template rendering tests (covered by `helm-template` target in 2.2)
+- [ ] Include manifest validation (kubeval or similar tools)
+- [ ] Test installation in kind cluster (covered by `helm-integration-test` target in 2.2)
 
 **Deliverables:**
 - Comprehensive test suite
 - Automated validation pipeline
+
+**Notes:**
+- Most validation is now handled by Makefile targets in Phase 2.2
+- This phase focuses on additional tooling (kubeval, etc.) not covered by basic Helm commands
 
 ## Phase 3: Chart Configuration and Best Practices
 
