@@ -35,7 +35,7 @@ HELM ?= helm
 KUSTOMIZE_VERSION ?= v5.0.1
 CONTROLLER_TOOLS_VERSION ?= v0.15.0
 
-.PHONY: help build docker-build kind-create kind-load kind-deploy kind-restart kind-delete clean controller-gen generate manifests kustomize install apply-issuer-secret apply-examples kind-dependencies helm-lint helm-template helm-test helm-validate-all helm-integration-test
+.PHONY: help build docker-build kind-create kind-load kind-deploy kind-restart kind-delete clean controller-gen generate manifests kustomize install apply-issuer-secret apply-examples kind-dependencies helm-lint helm-template helm-test helm-validate-all helm-integration-test lint fmt vet test check
 
 # Default target
 help:
@@ -47,6 +47,13 @@ help:
 	@echo "  clean         - Clean build artifacts"
 	@echo "  generate      - Generate code (DeepCopy, etc.)"
 	@echo "  manifests     - Generate CRDs and RBAC, sync to Helm chart"
+	@echo ""
+	@echo "Code Quality:"
+	@echo "  lint          - Run golangci-lint (same as CI)"
+	@echo "  fmt           - Run go fmt"
+	@echo "  vet           - Run go vet"
+	@echo "  test          - Run tests"
+	@echo "  check         - Run all code quality checks (fmt, vet, lint, test)"
 	@echo ""
 	@echo "Kind Cluster Management:"
 	@echo "  kind-create   - Create kind cluster"
@@ -124,6 +131,34 @@ clean:
 
 # Internal target to clean artifacts (kept for backward compatibility)
 _clean-artifacts: clean
+
+# ============================
+# Code Quality Targets
+# ============================
+
+# Run golangci-lint (same as CI)
+lint:
+	@echo "Running golangci-lint..."
+	golangci-lint run
+
+# Run go fmt
+fmt:
+	@echo "Running go fmt..."
+	go fmt ./...
+
+# Run go vet
+vet:
+	@echo "Running go vet..."
+	go vet ./...
+
+# Run tests
+test:
+	@echo "Running tests..."
+	go test -v ./...
+
+# Run all code quality checks (mimics CI)
+check: fmt vet lint test
+	@echo "All code quality checks completed successfully!"
 
 # Delete kind cluster
 kind-delete:
