@@ -27,7 +27,6 @@ linters:
     - gocyclo
     - gofmt
     - goimports
-    - gosimple
     - govet
     - ineffassign
     - lll
@@ -36,7 +35,6 @@ linters:
     - prealloc
     - revive
     - staticcheck
-    - typecheck
     - unconvert
     - unparam
     - unused
