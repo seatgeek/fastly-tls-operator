@@ -1,0 +1,214 @@
+name: Release
+
+on:
+  push:
+    tags: [ 'v*' ]
+
+env:
+  GO_VERSION: "1.24"
+  REGISTRY: ghcr.io/seatgeek
+  IMAGE_NAME: fastly-operator
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      image-name: ${{ steps.meta.outputs.tags }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=tag
+          type=raw,value=latest,enable={{is_default_branch}}
+        labels: |
+          org.opencontainers.image.title=Fastly Operator
+          org.opencontainers.image.description=Kubernetes operator for managing Fastly services
+          org.opencontainers.image.vendor=SeatGeek
+          org.opencontainers.image.licenses=MIT
+
+    - name: Build and push Docker image
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-args: |
+          VERSION=${{ github.ref_name }}
+          COMMIT_SHA=${{ github.sha }}
+          BUILD_DATE=${{ github.event.head_commit.timestamp }}
+
+    - name: Install Cosign
+      uses: sigstore/cosign-installer@v3
+
+    - name: Sign container image
+      run: |
+        cosign sign --yes ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  helm:
+    runs-on: ubuntu-latest
+    needs: docker
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Helm
+      uses: azure/setup-helm@v4
+      with:
+        version: 'v3.13.0'
+
+    - name: Configure Git
+      run: |
+        git config user.name "$GITHUB_ACTOR"
+        git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+
+    - name: Update chart version
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        sed -i "s/version: .*/version: $VERSION/" charts/fastly-operator/Chart.yaml
+        sed -i "s/appVersion: .*/appVersion: \"$VERSION\"/" charts/fastly-operator/Chart.yaml
+
+    - name: Update chart image in values.yaml
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        sed -i "s|repository: .*|repository: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}|" charts/fastly-operator/values.yaml
+        sed -i "s/tag: .*/tag: \"v$VERSION\"/" charts/fastly-operator/values.yaml
+
+    - name: Package Helm chart
+      run: |
+        mkdir -p .helm-repo
+        helm package charts/fastly-operator -d .helm-repo
+
+    - name: Checkout gh-pages branch
+      uses: actions/checkout@v4
+      with:
+        ref: gh-pages
+        path: gh-pages
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Update Helm repository
+      run: |
+        cp .helm-repo/*.tgz gh-pages/
+        cd gh-pages
+        helm repo index . --url https://seatgeek.github.io/fastly-operator/
+        git add .
+        git commit -m "Release chart version ${GITHUB_REF#refs/tags/v}" || exit 0
+        git push origin gh-pages
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [docker, helm]
+    permissions:
+      contents: write
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Generate changelog
+      id: changelog
+      run: |
+        # Get the previous tag
+        PREVIOUS_TAG=$(git describe --tags --abbrev=0 ${{ github.ref_name }}^)
+        echo "Previous tag: $PREVIOUS_TAG"
+        
+        # Generate changelog
+        echo "## What's Changed" > CHANGELOG.md
+        echo "" >> CHANGELOG.md
+        git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..${{ github.ref_name }} >> CHANGELOG.md
+        
+        # Set output for GitHub release
+        echo "changelog<<EOF" >> $GITHUB_OUTPUT
+        cat CHANGELOG.md >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref_name }}
+        release_name: Release ${{ github.ref_name }}
+        body: |
+          ## 🚀 Fastly Operator ${{ github.ref_name }}
+          
+          ### 📦 Installation
+          
+          **Helm Chart:**
+          ```bash
+          helm repo add fastly-operator https://seatgeek.github.io/fastly-operator/
+          helm repo update
+          helm install fastly-operator fastly-operator/fastly-operator
+          ```
+          
+          **Docker Image:**
+          ```bash
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+          ```
+          
+          ### 🔒 Security
+          
+          This release includes:
+          - ✅ Multi-architecture support (linux/amd64, linux/arm64)
+          - ✅ Container image signed with cosign
+          - ✅ Vulnerability scanning with Trivy
+          - ✅ SLSA provenance attestation
+          
+          ### 📝 Changes
+          
+          ${{ steps.changelog.outputs.changelog }}
+          
+          ### 🔗 Links
+          
+          - **Container Image**: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}`
+          - **Helm Chart**: Available at https://seatgeek.github.io/fastly-operator/
+          - **Documentation**: See README.md for usage instructions
+        draft: false
+        prerelease: false 
