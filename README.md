@@ -2,6 +2,10 @@
 
 A Go project that builds Kubernetes controllers for Fastly services.
 
+## Currently In Development
+
+⚠️ This project is currently in development and not intended for public use ⚠️
+
 ## Setup
 
 ### Prerequisites
