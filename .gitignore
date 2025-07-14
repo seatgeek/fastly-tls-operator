@@ -26,5 +26,6 @@ go.work
 *.swo
 *~
 
-# don't track the local changes when a fastly secret is created
+# fastly secret can live in either of these locations, don't track these
 config/operator/fastly-secret.yaml
+scripts/fastly-secret.env
