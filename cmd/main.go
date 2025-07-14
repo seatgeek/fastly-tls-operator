@@ -57,12 +57,17 @@ type cliFlags struct {
 // BindFlags will parse the given flagset
 func (c *cliFlags) BindFlags(fs *flag.FlagSet) {
 	fs.StringVar(&(c.metricsAddr), "metrics-bind-address", c.metricsAddr, "The address the metric endpoint binds to.")
-	fs.BoolVar(&(c.enableLeaderElection), "leader-election", c.enableLeaderElection, "Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
-	fs.StringVar(&(c.leaderElectionID), "leader-election-id", c.leaderElectionID, "The name of the resource that leader election will use for holding the leader lock.")
+	fs.BoolVar(&(c.enableLeaderElection), "leader-election", c.enableLeaderElection,
+		"Enable leader election for controller manager. "+
+			"Enabling this will ensure there is only one active controller manager.")
+	fs.StringVar(&(c.leaderElectionID), "leader-election-id", c.leaderElectionID,
+		"The name of the resource that leader election will use for holding the leader lock.")
 	fs.DurationVar(&(c.syncPeriod), "sync-period", c.syncPeriod, "Maximum delay between reconciles of any object.")
 	fs.IntVar(&(c.webhookPort), "webhook-port", c.webhookPort, "Webhook bind port")
-	fs.StringVar(&(c.webhookCertDir), "webhook-cert-dir", c.webhookCertDir, "Certs used to terminate TLS for webhook server")
-	fs.BoolVar(&(c.hackFastlyCertificateSyncLocalReconciliation), "hack-fastly-certificate-sync-local-reconciliation", c.hackFastlyCertificateSyncLocalReconciliation, "Enable local reconciliation for Fastly certificate sync")
+	fs.StringVar(&(c.webhookCertDir), "webhook-cert-dir", c.webhookCertDir,
+		"Certs used to terminate TLS for webhook server")
+	fs.BoolVar(&(c.hackFastlyCertificateSyncLocalReconciliation), "hack-fastly-certificate-sync-local-reconciliation",
+		c.hackFastlyCertificateSyncLocalReconciliation, "Enable local reconciliation for Fastly certificate sync")
 }
 
 func main() {

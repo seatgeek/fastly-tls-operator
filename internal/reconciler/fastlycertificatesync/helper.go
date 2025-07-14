@@ -17,8 +17,8 @@ import (
 func getCertificateAndTLSSecretFromSubject(ctx *Context) (*cmv1.Certificate, *corev1.Secret, error) {
 	// get certificate from subject
 	certificate := &cmv1.Certificate{}
-	if err := ctx.Client.Client.Get(ctx, types.NamespacedName{Name: ctx.Subject.Spec.CertificateName, Namespace: ctx.Subject.ObjectMeta.Namespace}, certificate); err != nil {
-		return nil, nil, fmt.Errorf("failed to get certificate of name %s and namespace %s: %w", ctx.Subject.Spec.CertificateName, ctx.Subject.ObjectMeta.Namespace, err)
+	if err := ctx.Client.Client.Get(ctx, types.NamespacedName{Name: ctx.Subject.Spec.CertificateName, Namespace: ctx.Subject.Namespace}, certificate); err != nil {
+		return nil, nil, fmt.Errorf("failed to get certificate of name %s and namespace %s: %w", ctx.Subject.Spec.CertificateName, ctx.Subject.Namespace, err)
 	}
 
 	// get secret from certificate

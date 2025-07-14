@@ -11,7 +11,6 @@ import (
 	"github.com/seatgeek/k8s-reconciler-generic/pkg/genrec"
 	rm "github.com/seatgeek/k8s-reconciler-generic/pkg/resourcemanager"
 	kmetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -21,15 +20,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-//+kubebuilder:rbac:groups=platform.seatgeek.io,resources=fastlycertificatesyncs,verbs=get;list;watch;update;patch;create;delete
-//+kubebuilder:rbac:groups=platform.seatgeek.io,resources=fastlycertificatesyncs/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=platform.seatgeek.io,resources=fastlycertificatesyncs/finalizers,verbs=update
-//+kubebuilder:rbac:groups="cert-manager.io",resources=certificaterequests;certificates,verbs=*
-//+kubebuilder:rbac:groups="",resources=secrets,verbs=*
-
-var (
-	msGK = schema.GroupKind{Group: "platform.seatgeek.io", Kind: "FastlyCertificateSync"}
-)
+// +kubebuilder:rbac:groups=platform.seatgeek.io,resources=fastlycertificatesyncs,verbs=get;list;watch;update;patch;create;delete
+// +kubebuilder:rbac:groups=platform.seatgeek.io,resources=fastlycertificatesyncs/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=platform.seatgeek.io,resources=fastlycertificatesyncs/finalizers,verbs=update
+// +kubebuilder:rbac:groups="cert-manager.io",resources=certificaterequests;certificates,verbs=*
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=*
 
 type Context = genrec.Context[*v1alpha1.FastlyCertificateSync, *Config]
 
@@ -106,7 +101,7 @@ func (l *Logic) ExtraAnnotationsForObject(_ *Context, _, _ string) map[string]st
 }
 
 func (l *Logic) ConfigureController(cb *builder.Builder, cluster cluster.Cluster) error {
-	if err := l.ResourceManager.RegisterOwnedTypes(cb); err != nil {
+	if err := l.RegisterOwnedTypes(cb); err != nil {
 		return err
 	}
 
@@ -263,9 +258,7 @@ func (l *Logic) ApplyUnmanaged(ctx *Context) error {
 
 	if len(l.ObservedState.UnusedPrivateKeyIDs) > 0 {
 		ctx.Log.Info("Unused private keys found, deleting them from Fastly")
-		if err := l.clearFastlyUnusedPrivateKeys(ctx); err != nil {
-			return fmt.Errorf("failed to clear Fastly unused private keys: %w", err)
-		}
+		l.clearFastlyUnusedPrivateKeys(ctx)
 
 		ctx.Log.Info("Requeueing...")
 		ctx.SetRequeue(0)

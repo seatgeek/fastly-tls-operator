@@ -130,8 +130,8 @@ func (l *Logic) getFastlyCertificateStatus(ctx *Context) (CertificateStatus, err
 func (l *Logic) getFastlyCertificateMatchingSubject(ctx *Context) (*fastly.CustomTLSCertificate, error) {
 
 	subjectCertificate := &cmv1.Certificate{}
-	if err := ctx.Client.Client.Get(ctx, types.NamespacedName{Name: ctx.Subject.Spec.CertificateName, Namespace: ctx.Subject.ObjectMeta.Namespace}, subjectCertificate); err != nil {
-		return nil, fmt.Errorf("failed to get certificate of name %s and namespace %s: %w", ctx.Subject.Spec.CertificateName, ctx.Subject.ObjectMeta.Namespace, err)
+	if err := ctx.Client.Client.Get(ctx, types.NamespacedName{Name: ctx.Subject.Spec.CertificateName, Namespace: ctx.Subject.Namespace}, subjectCertificate); err != nil {
+		return nil, fmt.Errorf("failed to get certificate of name %s and namespace %s: %w", ctx.Subject.Spec.CertificateName, ctx.Subject.Namespace, err)
 	}
 
 	// List existing certificates in Fastly
@@ -336,7 +336,7 @@ func (l *Logic) getFastlyDomainAndConfigurationToActivationMap(ctx *Context, cer
 	return domainAndConfigurationToActivation, nil
 }
 
-func (l *Logic) createMissingFastlyTLSActivations(ctx *Context) error {
+func (l *Logic) createMissingFastlyTLSActivations(_ *Context) error {
 	var errors []error
 
 	for _, activationData := range l.ObservedState.MissingTLSActivationData {
@@ -357,7 +357,7 @@ func (l *Logic) createMissingFastlyTLSActivations(ctx *Context) error {
 	return nil
 }
 
-func (l *Logic) deleteExtraFastlyTLSActivations(ctx *Context) error {
+func (l *Logic) deleteExtraFastlyTLSActivations(_ *Context) error {
 	var errors []error
 
 	for _, activationID := range l.ObservedState.ExtraTLSActivationIDs {
@@ -373,7 +373,7 @@ func (l *Logic) deleteExtraFastlyTLSActivations(ctx *Context) error {
 	return nil
 }
 
-func (l *Logic) getFastlyUnusedPrivateKeyIDs(ctx *Context) ([]string, error) {
+func (l *Logic) getFastlyUnusedPrivateKeyIDs(_ *Context) ([]string, error) {
 	privateKeys, err := l.FastlyClient.ListPrivateKeys(&fastly.ListPrivateKeysInput{FilterInUse: "false"})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list Fastly private keys: %w", err)
@@ -386,7 +386,7 @@ func (l *Logic) getFastlyUnusedPrivateKeyIDs(ctx *Context) ([]string, error) {
 	return unusedPrivateKeyIDs, nil
 }
 
-func (l *Logic) clearFastlyUnusedPrivateKeys(ctx *Context) error {
+func (l *Logic) clearFastlyUnusedPrivateKeys(ctx *Context) {
 	for _, privateKeyID := range l.ObservedState.UnusedPrivateKeyIDs {
 		ctx.Log.Info(fmt.Sprintf("attempting to delete unused private key %s", privateKeyID))
 		if err := l.FastlyClient.DeletePrivateKey(&fastly.DeletePrivateKeyInput{ID: privateKeyID}); err != nil {
@@ -394,9 +394,6 @@ func (l *Logic) clearFastlyUnusedPrivateKeys(ctx *Context) error {
 			// It is never critical to delete a private key, we only need deletion to be eventually consistent.
 			// We effectively swallow the error, but notify via an info log that wont trigger a monitor.
 			ctx.Log.Info(fmt.Sprintf("Failed to delete Fastly private key %s: %v. This is not critical, there are often race conditions when querying for unused private keys", privateKeyID, err))
-			return nil
 		}
 	}
-
-	return nil
 }
