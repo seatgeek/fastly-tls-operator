@@ -3,6 +3,7 @@ package fastlycertificatesync
 import (
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
@@ -13,6 +14,11 @@ import (
 const (
 	defaultFastlyPageSize = 20
 )
+
+// joinErrors combines multiple errors into a single error
+func joinErrors(errs []error) error {
+	return errors.Join(errs...)
+}
 
 func (l *Logic) getFastlyPrivateKeyExists(ctx *Context) (bool, error) {
 
@@ -330,8 +336,8 @@ func (l *Logic) getFastlyDomainAndConfigurationToActivationMap(ctx *Context, cer
 	return domainAndConfigurationToActivation, nil
 }
 
-func (l *Logic) createMissingFastlyTLSActivations(ctx *Context) []error {
-	errors := []error{}
+func (l *Logic) createMissingFastlyTLSActivations(ctx *Context) error {
+	var errors []error
 
 	for _, activationData := range l.ObservedState.MissingTLSActivationData {
 		// Create new activation
@@ -346,13 +352,13 @@ func (l *Logic) createMissingFastlyTLSActivations(ctx *Context) []error {
 	}
 
 	if len(errors) > 0 {
-		return errors
+		return fmt.Errorf("failed to create TLS activations: %w", joinErrors(errors))
 	}
 	return nil
 }
 
-func (l *Logic) deleteExtraFastlyTLSActivations(ctx *Context) []error {
-	errors := []error{}
+func (l *Logic) deleteExtraFastlyTLSActivations(ctx *Context) error {
+	var errors []error
 
 	for _, activationID := range l.ObservedState.ExtraTLSActivationIDs {
 		err := l.FastlyClient.DeleteTLSActivation(&fastly.DeleteTLSActivationInput{ID: activationID})
@@ -362,7 +368,7 @@ func (l *Logic) deleteExtraFastlyTLSActivations(ctx *Context) []error {
 	}
 
 	if len(errors) > 0 {
-		return errors
+		return fmt.Errorf("failed to delete TLS activations: %w", joinErrors(errors))
 	}
 	return nil
 }

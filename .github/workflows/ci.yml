@@ -38,9 +38,6 @@ jobs:
     - name: Download dependencies
       run: go mod download
 
-    - name: Run tests
-      run: go test -v ./...
-
     - name: Run go vet
       run: go vet ./...
 
@@ -50,6 +47,9 @@ jobs:
 
     - name: Run golangci-lint
       run: golangci-lint run
+
+    - name: Run tests
+      run: go test -v ./...
 
     - name: Check go mod tidy
       run: |
