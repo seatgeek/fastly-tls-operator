@@ -155,7 +155,7 @@ helm-template:
 	$(HELM) template fastly-operator $(CHART_PATH) \
 		--set image.repository=$(IMAGE_NAME) \
 		--set image.tag=$(IMAGE_TAG) \
-		--set fastlySecret.existingSecret=fastly-secret
+		--set fastly.secretName=fastly-secret
 
 # Basic Helm chart validation (local-only)
 helm-test:
@@ -173,7 +173,7 @@ helm-test:
 	@$(HELM) template fastly-operator $(CHART_PATH) \
 		--set image.repository=$(IMAGE_NAME) \
 		--set image.tag=$(IMAGE_TAG) \
-		--set fastlySecret.existingSecret=fastly-secret \
+		--set fastly.secretName=fastly-secret \
 		--dry-run > /dev/null
 	@echo "Basic validation completed successfully."
 

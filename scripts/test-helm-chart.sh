@@ -195,8 +195,13 @@ install_helm_chart() {
         --set image.repository="${IMAGE_NAME}" \
         --set image.tag="${IMAGE_TAG}" \
         --set image.pullPolicy=Never \
-        --set fastlySecret.existingSecret=fastly-secret \
+        --set fastly.secretName=fastly-secret \
+        --set operator.localReconciliation=true \
         --wait --timeout=300s
+    
+    # Note: operator.localReconciliation=true enables the hack-fastly-certificate-sync-local-reconciliation flag
+    # This allows testing with self-signed certificates and local CA certificates
+    # This flag is disabled by default in the published chart
     
     log_info "Helm chart installed successfully."
 }
@@ -328,6 +333,10 @@ case "${1:-}" in
         echo "  4. Install cert-manager"
         echo "  5. Install the Helm chart in kube-system namespace"
         echo "  6. Validate the installation"
+        echo ""
+        echo "Test Configuration:"
+        echo "  - Local reconciliation is enabled (hack-fastly-certificate-sync-local-reconciliation=true)"
+        echo "  - This allows testing with self-signed certificates and local CA"
         echo ""
         echo "Requirements:"
         echo "  - A 'fastly-secret.env' file must exist in the scripts directory"
