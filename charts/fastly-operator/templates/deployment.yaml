@@ -12,8 +12,15 @@ spec:
       {{- include "fastly-operator.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      {{- with .Values.annotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       labels:
         {{- include "fastly-operator.selectorLabels" . | nindent 8 }}
+        {{- with .Values.labels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
       serviceAccountName: {{ include "fastly-operator.serviceAccountName" . }}
       securityContext:
@@ -24,7 +31,7 @@ spec:
           secretName: {{ include "fastly-operator.fullname" . }}-webhook-tls
       containers:
       - name: operator
-        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        image: "{{ include "fastly-operator.image" . }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         env:
         - name: FASTLY_API_KEY
@@ -32,6 +39,10 @@ spec:
             secretKeyRef:
               name: {{ .Values.fastly.secretName }}
               key: {{ .Values.fastly.secretKey }}
+        # Additional environment variables from operator.env
+        {{- with .Values.operator.env }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
         args:
         - '-leader-election={{ .Values.operator.leaderElection }}'
         - '-webhook-port={{ .Values.operator.webhookPort }}'

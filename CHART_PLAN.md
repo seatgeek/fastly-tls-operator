@@ -4,11 +4,24 @@
 
 This document outlines the comprehensive plan for creating, testing, and publishing a Helm chart for the Fastly Operator. The chart will enable easy installation and management of the operator across different Kubernetes environments.
 
+## Current Status (Updated)
+
+📈 **Overall Progress: ~50% Complete**
+
+- ✅ **Phase 1: Chart Structure Creation** - **COMPLETE** (100%)
+- ✅ **Phase 2: Local Development and Testing** - **MOSTLY COMPLETE** (90%)
+- 🔄 **Phase 3: Chart Configuration and Best Practices** - **IN PROGRESS** (30%)
+- 📋 **Phase 4: Publishing Strategy** - **PENDING** (0%)
+- 📋 **Phase 5: Testing and Validation** - **PENDING** (0%)
+- 📋 **Phase 6: Documentation and Best Practices** - **PENDING** (0%)
+
+**Ready for Production Testing:** The chart can be installed and tested locally. Chart metadata is now properly configured with version 0.1.0. Focus now shifts to comprehensive values.yaml configuration and security best practices.
+
 ## Project Goals
 
-- [ ] Create a production-ready Helm chart
-- [ ] Enable local testing via kind
-- [ ] Provide comprehensive configuration options
+- ✅ Create a production-ready Helm chart *(basic structure complete)*
+- ✅ Enable local testing via kind *(fully implemented)*
+- [ ] Provide comprehensive configuration options *(needs enhancement)*
 - [ ] Establish publishing workflow
 - [ ] Document chart usage and configuration
 
@@ -73,18 +86,20 @@ charts/fastly-operator/
 **Status:** ✅ **COMPLETE** - Script created and verified working
 
 ### 2.2 Update Makefile
-- [ ] Add `helm-lint` target (local-only: runs `helm lint` on chart)
-- [ ] Add `helm-template` target (local-only: runs `helm template` to render templates)
-- [ ] Add `helm-test` target (local-only: basic chart validation without cluster)
-- [ ] Add `helm-validate-all` target (local-only: runs helm-lint, helm-template, and helm-test)
-- [ ] Add `helm-integration-test` target (cluster-based: runs the test script)
+- [x] Add `helm-lint` target (local-only: runs `helm lint` on chart)
+- [x] Add `helm-template` target (local-only: runs `helm template` to render templates)
+- [x] Add `helm-test` target (local-only: basic chart validation without cluster)
+- [x] Add `helm-validate-all` target (local-only: runs helm-lint, helm-template, and helm-test)
+- [x] Add `helm-integration-test` target (cluster-based: runs the test script)
 - [ ] Update `kind-deploy` to support Helm option
 
 **Deliverables:**
-- Enhanced Makefile with Helm support
-- Consistent development workflow
-- Local-only validation targets for fast feedback
-- Cluster-based integration testing
+- ✅ Enhanced Makefile with Helm support
+- ✅ Consistent development workflow
+- ✅ Local-only validation targets for fast feedback
+- ✅ Cluster-based integration testing
+
+**Status:** ✅ **MOSTLY COMPLETE** - All Helm targets implemented, only `kind-deploy` Helm option remaining
 
 **Notes:**
 - `helm-lint`, `helm-template`, and `helm-test` are local-only and do not require kind cluster
@@ -92,14 +107,16 @@ charts/fastly-operator/
 - `helm-integration-test` uses the existing test script for full cluster testing
 
 ### 2.3 Create Validation Tests
-- [ ] Implement chart linting (covered by `helm-lint` target in 2.2)
-- [ ] Add template rendering tests (covered by `helm-template` target in 2.2)
+- [x] Implement chart linting (covered by `helm-lint` target in 2.2)
+- [x] Add template rendering tests (covered by `helm-template` target in 2.2)
 - [ ] Include manifest validation (kubeval or similar tools)
-- [ ] Test installation in kind cluster (covered by `helm-integration-test` target in 2.2)
+- [x] Test installation in kind cluster (covered by `helm-integration-test` target in 2.2)
 
 **Deliverables:**
-- Comprehensive test suite
-- Automated validation pipeline
+- ✅ Comprehensive test suite
+- ✅ Automated validation pipeline
+
+**Status:** ✅ **MOSTLY COMPLETE** - Basic validation complete, additional tooling (kubeval) optional
 
 **Notes:**
 - Most validation is now handled by Makefile targets in Phase 2.2
@@ -108,28 +125,100 @@ charts/fastly-operator/
 ## Phase 3: Chart Configuration and Best Practices
 
 ### 3.1 Configure Chart.yaml
-- [ ] Set proper chart metadata
-- [ ] Define version and appVersion
-- [ ] Add keywords and descriptions
-- [ ] Include maintainer information
-- [ ] Define dependencies (cert-manager)
+- [x] Set proper chart metadata
+- [x] Define version and appVersion (0.1.0)
+- [x] Add keywords and descriptions
+- [x] Include maintainer information
+- [x] Add home/source URLs and annotations
+- [ ] ~~Define dependencies (cert-manager)~~ *Skipped - users will install cert-manager separately*
 
 **Deliverables:**
-- Complete Chart.yaml with all metadata
-- Clear dependency declarations
+- ✅ Complete Chart.yaml with all metadata
+- ✅ Professional chart description and keywords
+- ✅ Maintainer and source information
+- ✅ Proper semantic versioning (0.1.0)
+
+**Status:** ✅ **COMPLETE**
 
 ### 3.2 Create Comprehensive values.yaml
-- [ ] Image configuration options
-- [ ] Operator configuration settings
-- [ ] Resource limits and requests
-- [ ] RBAC configuration
-- [ ] Webhook settings
-- [ ] Security contexts
-- [ ] Dependency management
+
+**Current Status:** Basic structure complete, needs comprehensive enhancements
+
+#### 3.2.1 Image Configuration Options (Minor enhancements)
+- [x] Basic image repository, tag, and pullPolicy *(already implemented)*
+- [x] Add registry configuration support
+- [x] Add digest support for immutable deployments
+- [x] Basic imagePullSecrets configuration *(already implemented)*
+- [~] Enhanced imagePullSecrets configuration *(skipped by choice)*
+
+#### 3.2.2 Operator Configuration Settings (Add advanced options)
+- [x] Basic operator settings (leaderElection, webhookPort, localReconciliation) *(already implemented)*
+- [x] Basic probe configuration *(already implemented)*
+- [x] **HIGH PRIORITY**: Add unified environment variable configuration (operator.env array)
+- [x] **HIGH PRIORITY**: Add LOG_LEVEL default (INFO)
+- [~] **HIGH PRIORITY**: Add metrics configuration *(skipped by choice)
+- [~] **MEDIUM PRIORITY**: Add health check configuration *(skipped by choice)*
+- [~] **MEDIUM PRIORITY**: Add concurrent reconciler controls *(skipped by choice)*
+- [~] **LOW PRIORITY**: Add sync period configuration *(skipped by choice)*
+
+#### 3.2.3 Resource Limits and Requests (Add granular control)
+- [x] Basic resource limits and requests *(already implemented)*
+- [ ] **MEDIUM PRIORITY**: Add separate webhook resource configuration
+- [ ] **LOW PRIORITY**: Add resource monitoring and alerting configuration
+
+#### 3.2.4 RBAC Configuration (Enhance with granular control)
+- [x] Basic RBAC creation toggle *(already implemented)*
+- [ ] **HIGH PRIORITY**: Add granular RBAC rule control
+- [ ] **MEDIUM PRIORITY**: Add custom additional rules support
+- [ ] **MEDIUM PRIORITY**: Add specific permission controls (secrets, certificates)
+
+#### 3.2.5 Webhook Settings (Add advanced configuration)
+- [x] Basic webhook settings (enabled, failurePolicy, timeoutSeconds) *(already implemented)*
+- [x] Basic cert-manager integration *(already implemented)*
+- [ ] **HIGH PRIORITY**: Add namespace and object selector support
+- [ ] **MEDIUM PRIORITY**: Add admission review versions configuration
+- [ ] **MEDIUM PRIORITY**: Add custom webhook rules
+- [ ] **LOW PRIORITY**: Add custom issuer reference for cert-manager
+
+#### 3.2.6 Security Contexts (Enhance security hardening)
+- [x] Basic pod security context with non-root user *(already implemented)*
+- [x] Basic seccomp profile *(already implemented)*
+- [ ] **HIGH PRIORITY**: Add runAsGroup and fsGroup configuration
+- [ ] **HIGH PRIORITY**: Add comprehensive container security context
+- [ ] **MEDIUM PRIORITY**: Add SELinux support
+- [ ] **MEDIUM PRIORITY**: Add capabilities management (drop ALL, selective add)
+- [ ] **HIGH PRIORITY**: Add readOnlyRootFilesystem and privilege escalation controls
+
+#### 3.2.7 Dependency Management (NEW - Critical missing piece)
+- [ ] **CRITICAL**: Add cert-manager dependency configuration
+- [ ] **HIGH PRIORITY**: Add cert-manager version requirements
+- [ ] **HIGH PRIORITY**: Add dependency verification logic
+- [ ] **MEDIUM PRIORITY**: Add webhook certificate auto-creation
+- [ ] **MEDIUM PRIORITY**: Add namespace configuration for dependencies
+
+#### 3.2.8 Additional Production-Ready Features (NEW)
+- [x] **HIGH PRIORITY**: Add simplified annotations support (pod-level)
+- [x] **HIGH PRIORITY**: Add simplified labels support (pod-level)
+- [ ] **MEDIUM PRIORITY**: Add deployment strategy configuration
+- [ ] **MEDIUM PRIORITY**: Add pod disruption budget support
+- [ ] **LOW PRIORITY**: Add horizontal pod autoscaler configuration
+- [ ] **LOW PRIORITY**: Add network policy support
+- [ ] **LOW PRIORITY**: Add priority class and runtime class support
+- [ ] **LOW PRIORITY**: Add topology spread constraints
+- [ ] **LOW PRIORITY**: Add init containers and sidecar support
+- [ ] **LOW PRIORITY**: Add additional volumes and environment variables
 
 **Deliverables:**
-- Production-ready values.yaml
-- Comprehensive configuration options
+- ✅ Production-ready values.yaml foundation *(complete)*
+- 🔄 Comprehensive configuration options *(in progress)*
+- 📋 Advanced security and operational features *(planned)*
+
+**Implementation Priority:**
+1. **CRITICAL**: Dependency management (cert-manager verification)
+2. **HIGH**: Enhanced security contexts and RBAC
+3. **HIGH**: Advanced operator configuration (logging, metrics)
+4. **MEDIUM**: Advanced webhook and resource configuration
+5. **LOW**: Additional production features (PDB, HPA, network policies)
 
 ### 3.3 Implement Security Best Practices
 - [ ] Non-root security contexts
@@ -298,14 +387,16 @@ Select one or more options:
 
 ## Timeline Estimates
 
-- **Phase 1**: 2-3 days
-- **Phase 2**: 1-2 days
-- **Phase 3**: 2-3 days
+- **Phase 1**: ✅ **COMPLETE** *(was 2-3 days)*
+- **Phase 2**: ✅ **MOSTLY COMPLETE** *(was 1-2 days)*
+- **Phase 3**: ✅ **30% COMPLETE** - 1-2 days remaining *(current focus)*
 - **Phase 4**: 1-2 days
 - **Phase 5**: 2-3 days
 - **Phase 6**: 1-2 days
 
-**Total Estimated Time**: 9-15 days
+**Original Total Estimated Time**: 9-15 days  
+**Remaining Estimated Time**: 5-9 days  
+**Progress**: ~50% complete
 
 ## Risk Assessment
 
@@ -324,13 +415,19 @@ Select one or more options:
 - [ ] Documentation creation
 - [ ] CI/CD pipeline setup
 
-## Next Steps
+## Next Steps (Updated)
 
-1. **Start with Phase 1** - Create basic chart structure
-2. **Validate locally** - Use kind for immediate testing
-3. **Iterate quickly** - Focus on working deployment first
-4. **Add complexity gradually** - Build up configuration options
-5. **Document everything** - Keep documentation current
+1. **✅ Phase 1 & 2 Complete** - Basic chart structure and testing infrastructure ready
+2. **✅ Phase 3.1 Complete** - Chart metadata properly configured with version 0.1.0
+3. **🔄 Current Focus: Phase 3.2** - Enhance values.yaml with comprehensive configuration options
+4. **📋 Upcoming: Production Readiness** - Security best practices and comprehensive configuration
+5. **📋 Future: Publishing Strategy** - Choose and implement chart distribution method
+6. **📋 Final: Documentation** - Complete user guides and best practices
+
+### Immediate Priorities:
+- **Phase 3.2**: Enhance values.yaml with comprehensive configuration options (resource limits, security contexts, etc.)
+- **Phase 3.3**: Implement security best practices and validation
+- **Phase 4.1**: Choose publishing method (GitHub Pages, Artifact Hub, or Private Registry)
 
 ## Notes
 

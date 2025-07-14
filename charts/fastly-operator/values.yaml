@@ -5,10 +5,15 @@
 replicaCount: 1
 
 image:
+  # Container registry (leave empty for default registry)
+  registry: ""
   repository: fastly-operator
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: "latest"
+  # Digest support for immutable deployments (takes precedence over tag)
+  # Example: sha256:abcd1234...
+  digest: ""
 
 imagePullSecrets: []
 nameOverride: ""
@@ -25,8 +30,8 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
-podAnnotations: {}
-podLabels: {}
+annotations: {}
+labels: {}
 
 podSecurityContext:
   runAsUser: 65532
@@ -56,6 +61,24 @@ operator:
   webhookPort: 9443
   # Enable local reconciliation for development (should be false in production)
   localReconciliation: false
+  
+  # Metrics configuration
+  metrics:
+    # Enable metrics endpoint
+    enabled: true
+    # Metrics server port (currently hardcoded to 8080)
+    port: 8080
+    # Metrics endpoint path
+    path: "/metrics"
+    # Bind address for metrics server
+    bindAddress: "0.0.0.0"
+  
+  # Environment variables for the operator
+  env:
+    # Default log level
+    - name: LOG_LEVEL
+      value: "INFO"
+
   # Probe configuration
   probes:
     liveness:

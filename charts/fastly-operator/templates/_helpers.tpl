@@ -60,3 +60,18 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Create the container image name
+*/}}
+{{- define "fastly-operator.image" -}}
+{{- $registry := .Values.image.registry -}}
+{{- $repository := .Values.image.repository -}}
+{{- $tag := .Values.image.tag | default .Chart.AppVersion -}}
+{{- $digest := .Values.image.digest -}}
+{{- if $registry }}
+{{- $registry }}/{{ $repository }}{{ if $digest }}@{{ $digest }}{{ else }}:{{ $tag }}{{ end }}
+{{- else }}
+{{- $repository }}{{ if $digest }}@{{ $digest }}{{ else }}:{{ $tag }}{{ end }}
+{{- end }}
+{{- end }}
