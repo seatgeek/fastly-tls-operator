@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    tags: [ 'v*' ]
+    tags: [ 'v*', 'test-*' ]
 
 env:
   GO_VERSION: "1.24"
