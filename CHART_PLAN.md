@@ -1,438 +1,274 @@
-# Fastly Operator Helm Chart Development Plan
+# Fastly Operator - GitHub Publishing & Container Build Plan
 
 ## Overview
 
-This document outlines the comprehensive plan for creating, testing, and publishing a Helm chart for the Fastly Operator. The chart will enable easy installation and management of the operator across different Kubernetes environments.
+This document outlines the plan for hosting the Fastly Operator Helm chart on GitHub Pages and building/publishing Docker images to GitHub Container Registry (GHCR). The chart is already functional and ready for distribution.
 
-## Current Status (Updated)
+## Goals
 
-📈 **Overall Progress: ~50% Complete**
+- 🎯 **Host Helm Chart on GitHub Pages** - Make the chart easily installable via `helm repo add`
+- 🐳 **Publish Docker Images to GHCR** - Automated multi-architecture container builds
+- 🚀 **Automated CI/CD Pipeline** - Tag-based releases with GitHub Actions
+- 📦 **Semantic Versioning** - Proper release management with changelogs
+- 🔒 **Security & Best Practices** - Signed containers and vulnerability scanning
 
-- ✅ **Phase 1: Chart Structure Creation** - **COMPLETE** (100%)
-- ✅ **Phase 2: Local Development and Testing** - **MOSTLY COMPLETE** (90%)
-- 🔄 **Phase 3: Chart Configuration and Best Practices** - **IN PROGRESS** (30%)
-- 📋 **Phase 4: Publishing Strategy** - **PENDING** (0%)
-- 📋 **Phase 5: Testing and Validation** - **PENDING** (0%)
-- 📋 **Phase 6: Documentation and Best Practices** - **PENDING** (0%)
+## Current State
 
-**Ready for Production Testing:** The chart can be installed and tested locally. Chart metadata is now properly configured with version 0.1.0. Focus now shifts to comprehensive values.yaml configuration and security best practices.
+✅ **Helm Chart**: Ready in `charts/fastly-operator/` (v0.1.0)  
+✅ **Docker Build**: Working Dockerfile with multi-stage build  
+✅ **Local Testing**: Makefile targets for validation  
+❌ **GitHub Actions**: Not configured  
+❌ **Chart Repository**: Not hosted  
+❌ **Container Registry**: Not publishing  
 
-## Project Goals
+## Phase 1: GitHub Container Registry Setup
 
-- ✅ Create a production-ready Helm chart *(basic structure complete)*
-- ✅ Enable local testing via kind *(fully implemented)*
-- [ ] Provide comprehensive configuration options *(needs enhancement)*
-- [ ] Establish publishing workflow
-- [ ] Document chart usage and configuration
-
-## Phase 1: Chart Structure Creation
-
-### 1.1 Initialize Helm Chart
-- [x] Create `charts/fastly-operator` directory
-- [x] Initialize chart with `helm create`
-- [x] Clean up default template files
-- [x] Set up proper directory structure
+### 1.1 Configure Docker Image Publishing
+- [ ] Set up GitHub Container Registry (ghcr.io) authentication
+- [ ] Configure multi-architecture builds (linux/amd64, linux/arm64)  
+- [ ] Implement semantic versioning for images
+- [ ] Add image signing with cosign
+- [ ] Set up vulnerability scanning
 
 **Deliverables:**
-- Basic chart structure with proper organization
-- Clean `Chart.yaml` and `values.yaml` templates
+- Docker images published to `ghcr.io/seatgeek/fastly-operator`
+- Multi-architecture support
+- Signed and scanned container images
 
-### 1.2 Create Chart Directory Structure
+### 1.2 Update Makefile for Registry Publishing
+- [ ] Add `docker-push` target for local publishing
+- [ ] Add `docker-tag` target for proper versioning
+- [ ] Add `docker-multiarch` target for cross-platform builds
+- [ ] Update existing targets to use configurable registry
+
+**Deliverables:**
+- Enhanced Makefile with registry publishing support
+- Local development workflow for testing builds
+
+## Phase 2: GitHub Pages Helm Repository
+
+### 2.1 Set up GitHub Pages Repository
+- [ ] Create `gh-pages` branch for chart hosting
+- [ ] Configure GitHub Pages settings for the repository
+- [ ] Set up chart packaging and indexing
+- [ ] Create repository index.yaml
+- [ ] Test chart installation from GitHub Pages
+
+**Deliverables:**
+- Live Helm repository at `https://seatgeek.github.io/fastly-operator/`
+- Chart installable via `helm repo add fastly-operator https://seatgeek.github.io/fastly-operator/`
+
+### 2.2 Chart Packaging and Indexing
+- [ ] Create `scripts/package-chart.sh` for chart packaging
+- [ ] Implement chart versioning strategy
+- [ ] Set up index.yaml generation
+- [ ] Add chart validation before packaging
+- [ ] Create cleanup for old chart versions
+
+**Deliverables:**
+- Automated chart packaging workflow
+- Proper chart versioning and indexing
+
+## Phase 3: GitHub Actions CI/CD Pipeline
+
+### 3.1 Create Release Workflow
+```yaml
+# .github/workflows/release.yml
+name: Release
+on:
+  push:
+    tags: ['v*']
+jobs:
+  docker:
+    # Build and push Docker images
+  helm:
+    # Package and publish Helm chart
+  release:
+    # Create GitHub release with assets
 ```
-charts/fastly-operator/
-├── Chart.yaml
-├── values.yaml
-├── templates/
-│   ├── _helpers.tpl
-│   ├── crds/
-│   │   └── fastlycertificatesync.yaml
-│   ├── rbac/
-│   │   ├── serviceaccount.yaml
-│   │   ├── clusterrole.yaml
-│   │   └── clusterrolebinding.yaml
-│   ├── deployment.yaml
-│   ├── service.yaml
-│   ├── webhook/
-│   │   ├── certificate.yaml
-│   │   ├── issuer.yaml
-│   │   └── webhook-config.yaml
-│   └── secret.yaml
-└── README.md
+
+**Tasks:**
+- [ ] Create `.github/workflows/release.yml`
+- [ ] Set up Docker build and push job
+- [ ] Set up Helm chart packaging job
+- [ ] Set up GitHub release creation
+- [ ] Configure job dependencies and artifacts
+
+**Deliverables:**
+- Automated release pipeline triggered by git tags
+- Docker images and Helm charts published on release
+
+### 3.2 Create Development Workflow
+```yaml
+# .github/workflows/ci.yml
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  test:
+    # Run tests and linting
+  docker:
+    # Build and test Docker image
+  helm:
+    # Validate Helm chart
 ```
 
-### 1.3 Convert Existing Manifests
-- [x] Convert `config/operator/operator.yaml` to `templates/deployment.yaml`
-- [x] Convert `config/rbac/*.yaml` to `templates/rbac/`
-- [x] Convert CRDs to `templates/crds/`
-- [x] Convert webhook configs to `templates/webhook/`
-- [x] Add proper templating and value substitution
+**Tasks:**
+- [ ] Create `.github/workflows/ci.yml`
+- [ ] Set up Go testing and linting
+- [ ] Set up Docker build validation
+- [ ] Set up Helm chart linting and testing
+- [ ] Add security scanning (gosec, trivy)
 
 **Deliverables:**
-- All existing manifests converted to Helm templates
-- Proper Go template syntax throughout
+- Comprehensive CI pipeline for all pull requests
+- Quality gates for code, containers, and charts
 
-## Phase 2: Local Development and Testing
-
-### 2.1 Create Testing Infrastructure
-- [x] Create `scripts/test-helm-chart.sh` script
-- [x] Add kind cluster creation logic
-- [x] Include cert-manager installation
-- [x] Add chart installation and validation
+### 3.3 Configure Repository Secrets
+- [ ] `GITHUB_TOKEN` (automatically provided)
+- [ ] Optional: `COSIGN_KEY` for image signing
+- [ ] Optional: Additional registry credentials if needed
 
 **Deliverables:**
-- ✅ Automated testing script for local development
-- ✅ Integration with existing build process
+- Secure CI/CD pipeline with proper authentication
 
-**Status:** ✅ **COMPLETE** - Script created and verified working
+## Phase 4: Release Management
 
-### 2.2 Update Makefile
-- [x] Add `helm-lint` target (local-only: runs `helm lint` on chart)
-- [x] Add `helm-template` target (local-only: runs `helm template` to render templates)
-- [x] Add `helm-test` target (local-only: basic chart validation without cluster)
-- [x] Add `helm-validate-all` target (local-only: runs helm-lint, helm-template, and helm-test)
-- [x] Add `helm-integration-test` target (cluster-based: runs the test script)
-- [ ] Update `kind-deploy` to support Helm option
+### 4.1 Semantic Versioning Strategy
+- [ ] Define version bump rules (major.minor.patch)
+- [ ] Align chart version with app version
+- [ ] Set up automated changelog generation
+- [ ] Create release notes templates
 
-**Deliverables:**
-- ✅ Enhanced Makefile with Helm support
-- ✅ Consistent development workflow
-- ✅ Local-only validation targets for fast feedback
-- ✅ Cluster-based integration testing
+**Version Strategy:**
+- **Docker Image**: `ghcr.io/seatgeek/fastly-operator:v1.0.0`
+- **Helm Chart**: `version: 1.0.0, appVersion: "1.0.0"`
+- **Git Tag**: `v1.0.0`
 
-**Status:** ✅ **MOSTLY COMPLETE** - All Helm targets implemented, only `kind-deploy` Helm option remaining
-
-**Notes:**
-- `helm-lint`, `helm-template`, and `helm-test` are local-only and do not require kind cluster
-- `helm-validate-all` combines all local validation targets for comprehensive local testing
-- `helm-integration-test` uses the existing test script for full cluster testing
-
-### 2.3 Create Validation Tests
-- [x] Implement chart linting (covered by `helm-lint` target in 2.2)
-- [x] Add template rendering tests (covered by `helm-template` target in 2.2)
-- [ ] Include manifest validation (kubeval or similar tools)
-- [x] Test installation in kind cluster (covered by `helm-integration-test` target in 2.2)
+### 4.2 Release Process
+1. **Development**: Work on feature branches
+2. **Testing**: CI validates all changes
+3. **Tagging**: Create git tag `v1.0.0`
+4. **Automation**: GitHub Actions builds and publishes
+5. **Distribution**: Images on GHCR, chart on GitHub Pages
 
 **Deliverables:**
-- ✅ Comprehensive test suite
-- ✅ Automated validation pipeline
+- Clear release process documentation
+- Automated changelog generation
 
-**Status:** ✅ **MOSTLY COMPLETE** - Basic validation complete, additional tooling (kubeval) optional
+## Phase 5: Documentation and Usage
 
-**Notes:**
-- Most validation is now handled by Makefile targets in Phase 2.2
-- This phase focuses on additional tooling (kubeval, etc.) not covered by basic Helm commands
+### 5.1 Update README
+- [ ] Add installation instructions using Helm repository
+- [ ] Include container registry information
+- [ ] Add example configurations
+- [ ] Document release process for contributors
 
-## Phase 3: Chart Configuration and Best Practices
-
-### 3.1 Configure Chart.yaml
-- [x] Set proper chart metadata
-- [x] Define version and appVersion (0.1.0)
-- [x] Add keywords and descriptions
-- [x] Include maintainer information
-- [x] Add home/source URLs and annotations
-- [ ] ~~Define dependencies (cert-manager)~~ *Skipped - users will install cert-manager separately*
+### 5.2 Create Usage Examples
+- [ ] Basic installation from GitHub Pages
+- [ ] Production deployment with custom values
+- [ ] Upgrading between versions
+- [ ] Troubleshooting common issues
 
 **Deliverables:**
-- ✅ Complete Chart.yaml with all metadata
-- ✅ Professional chart description and keywords
-- ✅ Maintainer and source information
-- ✅ Proper semantic versioning (0.1.0)
+- Comprehensive documentation for end users
+- Clear contribution guidelines
 
-**Status:** ✅ **COMPLETE**
+## Implementation Timeline
 
-### 3.2 Create Comprehensive values.yaml
+**Phase 1: Container Registry** (1-2 days)
+- Set up GHCR publishing
+- Configure multi-architecture builds
+- Update Makefile targets
 
-**Current Status:** Basic structure complete, needs comprehensive enhancements
+**Phase 2: Helm Repository** (1 day)
+- Set up GitHub Pages
+- Create chart packaging scripts
+- Test chart installation
 
-#### 3.2.1 Image Configuration Options (Minor enhancements)
-- [x] Basic image repository, tag, and pullPolicy *(already implemented)*
-- [x] Add registry configuration support
-- [x] Add digest support for immutable deployments
-- [x] Basic imagePullSecrets configuration *(already implemented)*
-- [~] Enhanced imagePullSecrets configuration *(skipped by choice)*
+**Phase 3: CI/CD Pipeline** (2-3 days)
+- Create GitHub Actions workflows
+- Set up release automation
+- Configure security scanning
 
-#### 3.2.2 Operator Configuration Settings (Add advanced options)
-- [x] Basic operator settings (leaderElection, webhookPort, localReconciliation) *(already implemented)*
-- [x] Basic probe configuration *(already implemented)*
-- [x] **HIGH PRIORITY**: Add unified environment variable configuration (operator.env array)
-- [x] **HIGH PRIORITY**: Add LOG_LEVEL default (INFO)
-- [~] **HIGH PRIORITY**: Add metrics configuration *(skipped by choice)
-- [~] **MEDIUM PRIORITY**: Add health check configuration *(skipped by choice)*
-- [~] **MEDIUM PRIORITY**: Add concurrent reconciler controls *(skipped by choice)*
-- [~] **LOW PRIORITY**: Add sync period configuration *(skipped by choice)*
+**Phase 4: Release Management** (1 day)
+- Define versioning strategy
+- Create release documentation
+- Test release process
 
-#### 3.2.3 Resource Limits and Requests (Add granular control)
-- [x] Basic resource limits and requests *(already implemented)*
-- [ ] **MEDIUM PRIORITY**: Add separate webhook resource configuration
-- [ ] **LOW PRIORITY**: Add resource monitoring and alerting configuration
+**Phase 5: Documentation** (1 day)
+- Update README and docs
+- Create usage examples
+- Finalize contributor guides
 
-#### 3.2.4 RBAC Configuration (Enhance with granular control)
-- [x] Basic RBAC creation toggle *(already implemented)*
-- [ ] **HIGH PRIORITY**: Add granular RBAC rule control
-- [ ] **MEDIUM PRIORITY**: Add custom additional rules support
-- [ ] **MEDIUM PRIORITY**: Add specific permission controls (secrets, certificates)
-
-#### 3.2.5 Webhook Settings (Add advanced configuration)
-- [x] Basic webhook settings (enabled, failurePolicy, timeoutSeconds) *(already implemented)*
-- [x] Basic cert-manager integration *(already implemented)*
-- [ ] **HIGH PRIORITY**: Add namespace and object selector support
-- [ ] **MEDIUM PRIORITY**: Add admission review versions configuration
-- [ ] **MEDIUM PRIORITY**: Add custom webhook rules
-- [ ] **LOW PRIORITY**: Add custom issuer reference for cert-manager
-
-#### 3.2.6 Security Contexts (Enhance security hardening)
-- [x] Basic pod security context with non-root user *(already implemented)*
-- [x] Basic seccomp profile *(already implemented)*
-- [ ] **HIGH PRIORITY**: Add runAsGroup and fsGroup configuration
-- [ ] **HIGH PRIORITY**: Add comprehensive container security context
-- [ ] **MEDIUM PRIORITY**: Add SELinux support
-- [ ] **MEDIUM PRIORITY**: Add capabilities management (drop ALL, selective add)
-- [ ] **HIGH PRIORITY**: Add readOnlyRootFilesystem and privilege escalation controls
-
-#### 3.2.7 Dependency Management (NEW - Critical missing piece)
-- [ ] **CRITICAL**: Add cert-manager dependency configuration
-- [ ] **HIGH PRIORITY**: Add cert-manager version requirements
-- [ ] **HIGH PRIORITY**: Add dependency verification logic
-- [ ] **MEDIUM PRIORITY**: Add webhook certificate auto-creation
-- [ ] **MEDIUM PRIORITY**: Add namespace configuration for dependencies
-
-#### 3.2.8 Additional Production-Ready Features (NEW)
-- [x] **HIGH PRIORITY**: Add simplified annotations support (pod-level)
-- [x] **HIGH PRIORITY**: Add simplified labels support (pod-level)
-- [ ] **MEDIUM PRIORITY**: Add deployment strategy configuration
-- [ ] **MEDIUM PRIORITY**: Add pod disruption budget support
-- [ ] **LOW PRIORITY**: Add horizontal pod autoscaler configuration
-- [ ] **LOW PRIORITY**: Add network policy support
-- [ ] **LOW PRIORITY**: Add priority class and runtime class support
-- [ ] **LOW PRIORITY**: Add topology spread constraints
-- [ ] **LOW PRIORITY**: Add init containers and sidecar support
-- [ ] **LOW PRIORITY**: Add additional volumes and environment variables
-
-**Deliverables:**
-- ✅ Production-ready values.yaml foundation *(complete)*
-- 🔄 Comprehensive configuration options *(in progress)*
-- 📋 Advanced security and operational features *(planned)*
-
-**Implementation Priority:**
-1. **CRITICAL**: Dependency management (cert-manager verification)
-2. **HIGH**: Enhanced security contexts and RBAC
-3. **HIGH**: Advanced operator configuration (logging, metrics)
-4. **MEDIUM**: Advanced webhook and resource configuration
-5. **LOW**: Additional production features (PDB, HPA, network policies)
-
-### 3.3 Implement Security Best Practices
-- [ ] Non-root security contexts
-- [ ] Proper RBAC with least privilege
-- [ ] Pod Security Standards support
-- [ ] Network policies (optional)
-- [ ] Service mesh integration (optional)
-
-**Deliverables:**
-- Security-hardened templates
-- Compliance with Kubernetes security standards
-
-## Phase 4: Publishing Strategy
-
-### 4.1 Choose Publishing Method
-Select one or more options:
-- [ ] **Option A: GitHub Pages** (Recommended for open source)
-  - [ ] Create `gh-pages` branch
-  - [ ] Set up chart packaging
-  - [ ] Configure repository index
-  - [ ] Test repository access
-  
-- [ ] **Option B: Artifact Hub** (For broader distribution)
-  - [ ] Create Artifact Hub metadata
-  - [ ] Submit repository for inclusion
-  - [ ] Verify listing and searchability
-  
-- [ ] **Option C: Private Registry** (For enterprise)
-  - [ ] Configure OCI-compatible registry
-  - [ ] Set up push automation
-  - [ ] Test chart installation from registry
-
-**Deliverables:**
-- Working chart repository
-- Automated publishing pipeline
-
-### 4.2 Set Up CI/CD Pipeline
-- [ ] Create `.github/workflows/helm-publish.yml`
-- [ ] Configure automated chart packaging
-- [ ] Set up release trigger (tags)
-- [ ] Add chart testing in CI
-- [ ] Configure security scanning
-
-**Deliverables:**
-- Automated CI/CD pipeline
-- Release automation
-
-### 4.3 Version Management
-- [ ] Implement semantic versioning
-- [ ] Create changelog automation
-- [ ] Set up release notes generation
-- [ ] Configure tag-based releases
-
-**Deliverables:**
-- Version management strategy
-- Automated release process
-
-## Phase 5: Testing and Validation
-
-### 5.1 Comprehensive Testing Strategy
-- [ ] Create `scripts/comprehensive-test.sh`
-- [ ] Implement chart linting
-- [ ] Add template rendering validation
-- [ ] Include Kubernetes manifest validation
-- [ ] Test installation scenarios
-- [ ] Add upgrade/rollback testing
-
-**Deliverables:**
-- Complete testing suite
-- Automated validation pipeline
-
-### 5.2 Integration Testing
-- [ ] Test with different Kubernetes versions
-- [ ] Validate with multiple cert-manager versions
-- [ ] Test resource scaling scenarios
-- [ ] Validate webhook functionality
-- [ ] Test certificate synchronization
-
-**Deliverables:**
-- Multi-environment test results
-- Compatibility matrix
-
-### 5.3 Performance Testing
-- [ ] Resource usage validation
-- [ ] Startup time measurement
-- [ ] Memory and CPU profiling
-- [ ] Scaling behavior testing
-
-**Deliverables:**
-- Performance benchmarks
-- Resource optimization recommendations
-
-## Phase 6: Documentation and Best Practices
-
-### 6.1 Create Chart Documentation
-- [ ] Write comprehensive README.md for chart
-- [ ] Document all configuration options
-- [ ] Include common use case examples
-- [ ] Add troubleshooting guide
-- [ ] Create upgrade/migration guides
-
-**Deliverables:**
-- Complete chart documentation
-- User-friendly installation guide
-
-### 6.2 Create User Examples
-- [ ] Basic installation example
-- [ ] Production deployment example
-- [ ] Custom configuration examples
-- [ ] Integration with monitoring
-- [ ] Multi-environment setup
-
-**Deliverables:**
-- Example configurations
-- Best practice guidelines
-
-### 6.3 Community Preparation
-- [ ] Create contribution guidelines
-- [ ] Set up issue templates
-- [ ] Define support channels
-- [ ] Create security policy
-- [ ] Add code of conduct
-
-**Deliverables:**
-- Community-ready project
-- Clear contribution process
-
-## Dependencies and Prerequisites
-
-### External Dependencies
-- [ ] Helm 3.x installed
-- [ ] kind cluster for testing
-- [ ] cert-manager (runtime dependency)
-- [ ] kubectl configured
-- [ ] Docker for image building
-
-### Internal Dependencies
-- [ ] Existing operator manifests in `config/`
-- [ ] Working Dockerfile and build process
-- [ ] Proper RBAC definitions
-- [ ] CRD definitions
-- [ ] Webhook configurations
+**Total Estimated Time: 6-8 days**
 
 ## Success Criteria
 
-### Technical Criteria
-- [ ] Chart passes all lint checks
-- [ ] All templates render correctly
-- [ ] Installation works in kind cluster
-- [ ] Operator functions correctly when deployed via Helm
-- [ ] Chart follows Helm best practices
+### Technical Success
+- [ ] Docker images published to GHCR on every release
+- [ ] Helm chart hosted on GitHub Pages
+- [ ] Automated CI/CD pipeline working
+- [ ] Multi-architecture container support
+- [ ] Security scanning and signing implemented
 
-### User Experience Criteria
-- [ ] Simple installation process
-- [ ] Clear configuration options
-- [ ] Comprehensive documentation
-- [ ] Easy troubleshooting
-- [ ] Smooth upgrade path
+### User Success
+- [ ] Simple installation: `helm repo add fastly-operator https://seatgeek.github.io/fastly-operator/`
+- [ ] Easy image access: `docker pull ghcr.io/seatgeek/fastly-operator:latest`
+- [ ] Clear documentation and examples
+- [ ] Reliable release process
 
-### Operational Criteria
-- [ ] Automated testing pipeline
-- [ ] Reliable publishing process
-- [ ] Version management
+### Operational Success
+- [ ] Automated release workflow
+- [ ] Proper versioning and changelog
 - [ ] Security compliance
-- [ ] Performance validation
+- [ ] Maintainable CI/CD pipeline
 
-## Timeline Estimates
+## File Structure (Post-Implementation)
 
-- **Phase 1**: ✅ **COMPLETE** *(was 2-3 days)*
-- **Phase 2**: ✅ **MOSTLY COMPLETE** *(was 1-2 days)*
-- **Phase 3**: ✅ **30% COMPLETE** - 1-2 days remaining *(current focus)*
-- **Phase 4**: 1-2 days
-- **Phase 5**: 2-3 days
-- **Phase 6**: 1-2 days
+```
+fastly-operator/
+├── .github/
+│   └── workflows/
+│       ├── ci.yml           # Development CI pipeline
+│       └── release.yml      # Release automation
+├── charts/
+│   └── fastly-operator/     # Existing Helm chart
+├── scripts/
+│   ├── package-chart.sh     # Chart packaging
+│   └── build-multiarch.sh   # Multi-arch Docker builds
+├── docs/
+│   ├── installation.md      # Installation guide
+│   └── releasing.md         # Release process
+└── ...                      # Existing project files
+```
 
-**Original Total Estimated Time**: 9-15 days  
-**Remaining Estimated Time**: 5-9 days  
-**Progress**: ~50% complete
+## Next Steps
 
-## Risk Assessment
+1. **Start with Phase 1**: Set up GitHub Container Registry publishing
+2. **Phase 2**: Configure GitHub Pages for Helm repository
+3. **Phase 3**: Create GitHub Actions workflows
+4. **Phase 4**: Define and test release process
+5. **Phase 5**: Update documentation and examples
 
-### High Risk
-- [ ] Webhook certificate management in Helm
-- [ ] CRD installation ordering
-- [ ] Existing deployment compatibility
+## Commands for Users (Post-Implementation)
 
-### Medium Risk
-- [ ] Chart complexity management
-- [ ] Testing environment setup
-- [ ] Publishing workflow automation
+```bash
+# Add Helm repository
+helm repo add fastly-operator https://seatgeek.github.io/fastly-operator/
+helm repo update
 
-### Low Risk
-- [ ] Basic template conversion
-- [ ] Documentation creation
-- [ ] CI/CD pipeline setup
+# Install the operator
+helm install fastly-operator fastly-operator/fastly-operator
 
-## Next Steps (Updated)
+# Pull Docker image
+docker pull ghcr.io/seatgeek/fastly-operator:latest
 
-1. **✅ Phase 1 & 2 Complete** - Basic chart structure and testing infrastructure ready
-2. **✅ Phase 3.1 Complete** - Chart metadata properly configured with version 0.1.0
-3. **🔄 Current Focus: Phase 3.2** - Enhance values.yaml with comprehensive configuration options
-4. **📋 Upcoming: Production Readiness** - Security best practices and comprehensive configuration
-5. **📋 Future: Publishing Strategy** - Choose and implement chart distribution method
-6. **📋 Final: Documentation** - Complete user guides and best practices
+# Check available versions
+helm search repo fastly-operator --versions
+```
 
-### Immediate Priorities:
-- **Phase 3.2**: Enhance values.yaml with comprehensive configuration options (resource limits, security contexts, etc.)
-- **Phase 3.3**: Implement security best practices and validation
-- **Phase 4.1**: Choose publishing method (GitHub Pages, Artifact Hub, or Private Registry)
-
-## Notes
-
-- Keep existing `config/` manifests as reference
-- Ensure backward compatibility with current deployment method
-- Consider chart versioning strategy early
-- Plan for both development and production use cases
-- Include monitoring and observability considerations 
+This plan focuses exclusively on publishing and distribution, leveraging GitHub's built-in capabilities for hosting both container images and Helm charts. 
