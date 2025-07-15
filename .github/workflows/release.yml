@@ -87,11 +87,11 @@ jobs:
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        target: final_prebuilt
         build-args: |
           VERSION=${{ github.ref_name }}
           COMMIT_SHA=${{ github.sha }}
           BUILD_DATE=${{ github.event.head_commit.timestamp }}
-          BUILD_STAGE=prebuilt
 
     - name: Install Cosign
       uses: sigstore/cosign-installer@v3

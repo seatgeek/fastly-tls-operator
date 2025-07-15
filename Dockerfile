@@ -23,17 +23,19 @@ COPY internal/ internal/
 # by leaving it empty we can ensure that the container and binary shipped on it will have the same platform.
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o manager cmd/main.go
 
-# Stage for pre-built binaries (used by CI)
-FROM scratch AS prebuilt
-ARG TARGETARCH
-COPY manager-${TARGETARCH} /workspace/manager
-
+# Default final stage - builds from scratch
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM gcr.io/distroless/static:nonroot
-ARG BUILD_STAGE=builder
 WORKDIR /
-COPY --from=${BUILD_STAGE} /workspace/manager .
+COPY --from=builder /workspace/manager .
 USER 65532:65532
+ENTRYPOINT ["/manager"]
 
+# Alternative approach for binaries built outside of the Dockerfile
+FROM gcr.io/distroless/static:nonroot AS final_prebuilt
+ARG TARGETARCH
+WORKDIR /
+COPY manager-${TARGETARCH} /workspace/manager
+USER 65532:65532
 ENTRYPOINT ["/manager"]
