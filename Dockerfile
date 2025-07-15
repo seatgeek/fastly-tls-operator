@@ -1,4 +1,4 @@
-# Build the manager binary
+# Stage for building the manage binary within Docker
 FROM docker.io/golang:1.24 AS builder
 ARG TARGETOS
 ARG TARGETARCH
@@ -23,11 +23,17 @@ COPY internal/ internal/
 # by leaving it empty we can ensure that the container and binary shipped on it will have the same platform.
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o manager cmd/main.go
 
+# Stage for pre-built binaries (used by CI)
+FROM scratch AS prebuilt
+ARG TARGETARCH
+COPY manager-${TARGETARCH} /workspace/manager
+
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM gcr.io/distroless/static:nonroot
+ARG BUILD_STAGE=builder
 WORKDIR /
-COPY --from=builder /workspace/manager .
+COPY --from=${BUILD_STAGE} /workspace/manager .
 USER 65532:65532
 
 ENTRYPOINT ["/manager"]

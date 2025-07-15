@@ -25,6 +25,30 @@ jobs:
       with:
         fetch-depth: 0
 
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Build binaries for multiple architectures
+      run: |
+        CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager-amd64 cmd/main.go
+        CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -a -o manager-arm64 cmd/main.go
+        chmod +x manager-amd64 manager-arm64
+
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
 
@@ -67,6 +91,7 @@ jobs:
           VERSION=${{ github.ref_name }}
           COMMIT_SHA=${{ github.sha }}
           BUILD_DATE=${{ github.event.head_commit.timestamp }}
+          BUILD_STAGE=prebuilt
 
     - name: Install Cosign
       uses: sigstore/cosign-installer@v3
