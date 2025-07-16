@@ -145,7 +145,7 @@ jobs:
     - name: Update chart image in values.yaml
       run: |
         VERSION=${GITHUB_REF#refs/tags/v}
-        sed -i "s|repository: .*|repository: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}|" charts/fastly-operator/values.yaml
+        sed -i "s#repository: .*#repository: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}#" charts/fastly-operator/values.yaml
         sed -i "s/tag: .*/tag: \"v$VERSION\"/" charts/fastly-operator/values.yaml
 
     - name: Package Helm chart
