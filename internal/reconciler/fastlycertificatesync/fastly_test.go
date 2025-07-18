@@ -1,15 +1,94 @@
 package fastlycertificatesync
 
 import (
-	"encoding/json"
 	"errors"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/fastly/go-fastly/v10/fastly"
 	"github.com/go-logr/logr"
 )
+
+// MockFastlyClient implements FastlyClientInterface for testing
+type MockFastlyClient struct {
+	ListPrivateKeysFunc            func(input *fastly.ListPrivateKeysInput) ([]*fastly.PrivateKey, error)
+	CreatePrivateKeyFunc           func(input *fastly.CreatePrivateKeyInput) (*fastly.PrivateKey, error)
+	DeletePrivateKeyFunc           func(input *fastly.DeletePrivateKeyInput) error
+	ListCustomTLSCertificatesFunc  func(input *fastly.ListCustomTLSCertificatesInput) ([]*fastly.CustomTLSCertificate, error)
+	CreateCustomTLSCertificateFunc func(input *fastly.CreateCustomTLSCertificateInput) (*fastly.CustomTLSCertificate, error)
+	UpdateCustomTLSCertificateFunc func(input *fastly.UpdateCustomTLSCertificateInput) (*fastly.CustomTLSCertificate, error)
+	ListTLSActivationsFunc         func(input *fastly.ListTLSActivationsInput) ([]*fastly.TLSActivation, error)
+	CreateTLSActivationFunc        func(input *fastly.CreateTLSActivationInput) (*fastly.TLSActivation, error)
+	DeleteTLSActivationFunc        func(input *fastly.DeleteTLSActivationInput) error
+
+	// Track method calls
+	DeletePrivateKeyCalls []string
+}
+
+func (m *MockFastlyClient) ListPrivateKeys(input *fastly.ListPrivateKeysInput) ([]*fastly.PrivateKey, error) {
+	if m.ListPrivateKeysFunc != nil {
+		return m.ListPrivateKeysFunc(input)
+	}
+	return nil, nil
+}
+
+func (m *MockFastlyClient) CreatePrivateKey(input *fastly.CreatePrivateKeyInput) (*fastly.PrivateKey, error) {
+	if m.CreatePrivateKeyFunc != nil {
+		return m.CreatePrivateKeyFunc(input)
+	}
+	return nil, nil
+}
+
+func (m *MockFastlyClient) DeletePrivateKey(input *fastly.DeletePrivateKeyInput) error {
+	// Track the call
+	m.DeletePrivateKeyCalls = append(m.DeletePrivateKeyCalls, input.ID)
+
+	if m.DeletePrivateKeyFunc != nil {
+		return m.DeletePrivateKeyFunc(input)
+	}
+	return nil
+}
+
+func (m *MockFastlyClient) ListCustomTLSCertificates(input *fastly.ListCustomTLSCertificatesInput) ([]*fastly.CustomTLSCertificate, error) {
+	if m.ListCustomTLSCertificatesFunc != nil {
+		return m.ListCustomTLSCertificatesFunc(input)
+	}
+	return nil, nil
+}
+
+func (m *MockFastlyClient) CreateCustomTLSCertificate(input *fastly.CreateCustomTLSCertificateInput) (*fastly.CustomTLSCertificate, error) {
+	if m.CreateCustomTLSCertificateFunc != nil {
+		return m.CreateCustomTLSCertificateFunc(input)
+	}
+	return nil, nil
+}
+
+func (m *MockFastlyClient) UpdateCustomTLSCertificate(input *fastly.UpdateCustomTLSCertificateInput) (*fastly.CustomTLSCertificate, error) {
+	if m.UpdateCustomTLSCertificateFunc != nil {
+		return m.UpdateCustomTLSCertificateFunc(input)
+	}
+	return nil, nil
+}
+
+func (m *MockFastlyClient) ListTLSActivations(input *fastly.ListTLSActivationsInput) ([]*fastly.TLSActivation, error) {
+	if m.ListTLSActivationsFunc != nil {
+		return m.ListTLSActivationsFunc(input)
+	}
+	return nil, nil
+}
+
+func (m *MockFastlyClient) CreateTLSActivation(input *fastly.CreateTLSActivationInput) (*fastly.TLSActivation, error) {
+	if m.CreateTLSActivationFunc != nil {
+		return m.CreateTLSActivationFunc(input)
+	}
+	return nil, nil
+}
+
+func (m *MockFastlyClient) DeleteTLSActivation(input *fastly.DeleteTLSActivationInput) error {
+	if m.DeleteTLSActivationFunc != nil {
+		return m.DeleteTLSActivationFunc(input)
+	}
+	return nil
+}
 
 func TestJoinErrors(t *testing.T) {
 	tests := []struct {
@@ -65,112 +144,66 @@ func TestJoinErrors(t *testing.T) {
 
 func TestLogic_getFastlyUnusedPrivateKeyIDs(t *testing.T) {
 	tests := []struct {
-		name           string
-		mockResponse   []fastly.PrivateKey
-		mockStatusCode int
-		mockError      bool
-		expectedIDs    []string
-		expectedError  string
+		name          string
+		mockResponse  []*fastly.PrivateKey
+		mockError     error
+		expectedIDs   []string
+		expectedError string
 	}{
 		{
 			name: "successful call with multiple keys",
-			mockResponse: []fastly.PrivateKey{
+			mockResponse: []*fastly.PrivateKey{
 				{ID: "key1"},
 				{ID: "key2"},
 				{ID: "key3"},
 			},
-			mockStatusCode: 200,
-			mockError:      false,
-			expectedIDs:    []string{"key1", "key2", "key3"},
-			expectedError:  "",
+			expectedIDs:   []string{"key1", "key2", "key3"},
+			expectedError: "",
 		},
 		{
-			name:           "successful call with no keys",
-			mockResponse:   []fastly.PrivateKey{},
-			mockStatusCode: 200,
-			mockError:      false,
-			expectedIDs:    []string{},
-			expectedError:  "",
+			name:          "successful call with no keys",
+			mockResponse:  []*fastly.PrivateKey{},
+			expectedIDs:   []string{},
+			expectedError: "",
 		},
 		{
-			name: "successful call with single key",
-			mockResponse: []fastly.PrivateKey{
-				{ID: "single-key"},
-			},
-			mockStatusCode: 200,
-			mockError:      false,
-			expectedIDs:    []string{"single-key"},
-			expectedError:  "",
+			name:          "successful call with single key",
+			mockResponse:  []*fastly.PrivateKey{{ID: "single-key"}},
+			expectedIDs:   []string{"single-key"},
+			expectedError: "",
 		},
 		{
-			name:           "api call returns 500",
-			mockResponse:   nil,
-			mockStatusCode: 500,
-			mockError:      true,
-			expectedIDs:    nil,
-			expectedError:  "failed to list Fastly private keys:",
+			name:          "api call fails",
+			mockResponse:  nil,
+			mockError:     errors.New("api error"),
+			expectedIDs:   nil,
+			expectedError: "failed to list Fastly private keys: api error",
 		},
 		{
-			name:           "api call returns 404",
-			mockResponse:   nil,
-			mockStatusCode: 404,
-			mockError:      true,
-			expectedIDs:    nil,
-			expectedError:  "failed to list Fastly private keys:",
+			name:          "api call returns nil response",
+			mockResponse:  nil,
+			mockError:     nil,
+			expectedIDs:   []string{},
+			expectedError: "",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create test server
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				// Verify the request path and query params
-				if r.URL.Path != "/tls/private_keys" {
-					t.Errorf("Expected path /tls/private_keys, got %s", r.URL.Path)
-				}
-
-				// Verify filter[in_use]=false is set
-				if r.URL.Query().Get("filter[in_use]") != "false" {
-					t.Errorf("Expected filter[in_use]=false, got %s", r.URL.Query().Get("filter[in_use]"))
-				}
-
-				if tt.mockError {
-					w.WriteHeader(tt.mockStatusCode)
-					w.Write([]byte("Internal Server Error"))
-					return
-				}
-
-				// Create JSONAPI response structure
-				data := make([]map[string]interface{}, len(tt.mockResponse))
-				for i, key := range tt.mockResponse {
-					data[i] = map[string]interface{}{
-						"type": "tls_private_key",
-						"id":   key.ID,
-						"attributes": map[string]interface{}{
-							"name": key.Name,
-						},
+			// Create mock client
+			mockClient := &MockFastlyClient{
+				ListPrivateKeysFunc: func(input *fastly.ListPrivateKeysInput) ([]*fastly.PrivateKey, error) {
+					// Verify the correct filter is set
+					if input.FilterInUse != "false" {
+						t.Errorf("Expected FilterInUse = 'false', got %q", input.FilterInUse)
 					}
-				}
-
-				response := map[string]interface{}{
-					"data": data,
-				}
-
-				w.Header().Set("Content-Type", "application/vnd.api+json")
-				w.WriteHeader(tt.mockStatusCode)
-				json.NewEncoder(w).Encode(response)
-			}))
-			defer server.Close()
-
-			// Create fastly client pointed at test server
-			client, err := fastly.NewClientForEndpoint("test-key", server.URL)
-			if err != nil {
-				t.Fatalf("Failed to create fastly client: %v", err)
+					return tt.mockResponse, tt.mockError
+				},
 			}
 
-			// Create Logic instance with real client pointed at mock server
+			// Create Logic instance with mock client
 			logic := &Logic{
-				FastlyClient: client,
+				FastlyClient: mockClient,
 			}
 
 			// Call the actual function from fastly.go
@@ -183,12 +216,9 @@ func TestLogic_getFastlyUnusedPrivateKeyIDs(t *testing.T) {
 				}
 			} else {
 				if err == nil {
-					t.Errorf("getFastlyUnusedPrivateKeyIDs() error = nil, want error containing %q", tt.expectedError)
-				} else if len(tt.expectedError) > 0 && len(err.Error()) > 0 {
-					// Check if error contains expected substring
-					if len(err.Error()) < len(tt.expectedError) || err.Error()[:len(tt.expectedError)] != tt.expectedError {
-						t.Errorf("getFastlyUnusedPrivateKeyIDs() error = %q, want error starting with %q", err.Error(), tt.expectedError)
-					}
+					t.Errorf("getFastlyUnusedPrivateKeyIDs() error = nil, want %q", tt.expectedError)
+				} else if err.Error() != tt.expectedError {
+					t.Errorf("getFastlyUnusedPrivateKeyIDs() error = %q, want %q", err.Error(), tt.expectedError)
 				}
 			}
 
@@ -211,96 +241,72 @@ func TestLogic_clearFastlyUnusedPrivateKeys(t *testing.T) {
 	tests := []struct {
 		name                string
 		unusedPrivateKeyIDs []string
-		deleteResponses     map[string]int // Map of keyID -> HTTP status code
+		deleteErrors        map[string]error // Map of keyID -> error to return
 		expectedDeletedKeys []string
 	}{
 		{
 			name:                "successful deletion of multiple keys",
 			unusedPrivateKeyIDs: []string{"key1", "key2", "key3"},
-			deleteResponses: map[string]int{
-				"key1": 200,
-				"key2": 200,
-				"key3": 200,
-			},
+			deleteErrors:        map[string]error{},
 			expectedDeletedKeys: []string{"key1", "key2", "key3"},
 		},
 		{
 			name:                "no keys to delete",
 			unusedPrivateKeyIDs: []string{},
-			deleteResponses:     map[string]int{},
+			deleteErrors:        map[string]error{},
 			expectedDeletedKeys: []string{},
 		},
 		{
 			name:                "successful deletion of single key",
 			unusedPrivateKeyIDs: []string{"single-key"},
-			deleteResponses: map[string]int{
-				"single-key": 200,
-			},
+			deleteErrors:        map[string]error{},
 			expectedDeletedKeys: []string{"single-key"},
 		},
 		{
 			name:                "some deletions fail - should continue",
 			unusedPrivateKeyIDs: []string{"key1", "key2", "key3"},
-			deleteResponses: map[string]int{
-				"key1": 500, // fails
-				"key2": 200, // succeeds
-				"key3": 404, // fails
+			deleteErrors: map[string]error{
+				"key1": errors.New("delete failed"),
+				"key3": errors.New("another delete failed"),
 			},
-			expectedDeletedKeys: []string{"key1", "key2", "key3"}, // all attempted
+			expectedDeletedKeys: []string{"key1", "key2", "key3"},
 		},
 		{
 			name:                "all deletions fail - should continue",
 			unusedPrivateKeyIDs: []string{"key1", "key2"},
-			deleteResponses: map[string]int{
-				"key1": 500,
-				"key2": 500,
+			deleteErrors: map[string]error{
+				"key1": errors.New("delete failed"),
+				"key2": errors.New("another delete failed"),
 			},
 			expectedDeletedKeys: []string{"key1", "key2"},
+		},
+		{
+			name:                "mixed success and failure",
+			unusedPrivateKeyIDs: []string{"success-key", "fail-key", "another-success"},
+			deleteErrors: map[string]error{
+				"fail-key": errors.New("this one fails"),
+			},
+			expectedDeletedKeys: []string{"success-key", "fail-key", "another-success"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			deletedKeys := []string{}
-
-			// Create test server
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.Method != "DELETE" {
-					t.Errorf("Expected DELETE method, got %s", r.Method)
-				}
-
-				// Extract key ID from path like /tls/private_keys/{id}
-				path := r.URL.Path
-				if len(path) < 18 { // "/tls/private_keys/" is 18 chars
-					t.Errorf("Invalid path: %s", path)
-					return
-				}
-				keyID := path[18:] // Extract ID after "/tls/private_keys/"
-
-				// Track that this key was attempted to be deleted
-				deletedKeys = append(deletedKeys, keyID)
-
-				// Return the configured response for this key
-				if statusCode, exists := tt.deleteResponses[keyID]; exists {
-					w.WriteHeader(statusCode)
-					if statusCode != 200 {
-						w.Write([]byte("Error"))
+			// Create mock client
+			mockClient := &MockFastlyClient{
+				DeletePrivateKeyCalls: []string{}, // Reset calls
+				DeletePrivateKeyFunc: func(input *fastly.DeletePrivateKeyInput) error {
+					// Return error if specified for this key
+					if err, exists := tt.deleteErrors[input.ID]; exists {
+						return err
 					}
-				} else {
-					w.WriteHeader(404)
-				}
-			}))
-			defer server.Close()
-
-			// Create fastly client pointed at test server
-			client, err := fastly.NewClientForEndpoint("test-key", server.URL)
-			if err != nil {
-				t.Fatalf("Failed to create fastly client: %v", err)
+					return nil
+				},
 			}
 
-			// Create Logic instance with real client pointed at mock server
+			// Create Logic instance with mock client and observed state
 			logic := &Logic{
-				FastlyClient: client,
+				FastlyClient: mockClient,
 				ObservedState: ObservedState{
 					UnusedPrivateKeyIDs: tt.unusedPrivateKeyIDs,
 				},
@@ -315,18 +321,18 @@ func TestLogic_clearFastlyUnusedPrivateKeys(t *testing.T) {
 			logic.clearFastlyUnusedPrivateKeys(ctx)
 
 			// Verify the correct delete calls were made
-			if len(deletedKeys) != len(tt.expectedDeletedKeys) {
+			if len(mockClient.DeletePrivateKeyCalls) != len(tt.expectedDeletedKeys) {
 				t.Errorf("clearFastlyUnusedPrivateKeys() made %d delete calls, want %d",
-					len(deletedKeys), len(tt.expectedDeletedKeys))
+					len(mockClient.DeletePrivateKeyCalls), len(tt.expectedDeletedKeys))
 			}
 
 			// Verify each expected call was made
 			for i, expectedID := range tt.expectedDeletedKeys {
-				if i >= len(deletedKeys) {
+				if i >= len(mockClient.DeletePrivateKeyCalls) {
 					t.Errorf("clearFastlyUnusedPrivateKeys() missing delete call %d for key %s", i, expectedID)
-				} else if deletedKeys[i] != expectedID {
+				} else if mockClient.DeletePrivateKeyCalls[i] != expectedID {
 					t.Errorf("clearFastlyUnusedPrivateKeys() delete call %d = %s, want %s",
-						i, deletedKeys[i], expectedID)
+						i, mockClient.DeletePrivateKeyCalls[i], expectedID)
 				}
 			}
 		})

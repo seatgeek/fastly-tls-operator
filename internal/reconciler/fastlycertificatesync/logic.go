@@ -61,7 +61,7 @@ type Logic struct {
 	genrec.WithoutFinalizationMixin[*v1alpha1.FastlyCertificateSync, *Config]
 	rm.ResourceManager[*Context]
 	Config        RuntimeConfig
-	FastlyClient  *fastly.Client
+	FastlyClient  FastlyClientInterface
 	ObservedState ObservedState
 }
 

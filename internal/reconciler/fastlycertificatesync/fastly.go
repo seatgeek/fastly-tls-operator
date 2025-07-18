@@ -15,6 +15,19 @@ const (
 	defaultFastlyPageSize = 20
 )
 
+// FastlyClientInterface defines the Fastly API methods needed by the Logic struct
+type FastlyClientInterface interface {
+	ListPrivateKeys(input *fastly.ListPrivateKeysInput) ([]*fastly.PrivateKey, error)
+	CreatePrivateKey(input *fastly.CreatePrivateKeyInput) (*fastly.PrivateKey, error)
+	DeletePrivateKey(input *fastly.DeletePrivateKeyInput) error
+	ListCustomTLSCertificates(input *fastly.ListCustomTLSCertificatesInput) ([]*fastly.CustomTLSCertificate, error)
+	CreateCustomTLSCertificate(input *fastly.CreateCustomTLSCertificateInput) (*fastly.CustomTLSCertificate, error)
+	UpdateCustomTLSCertificate(input *fastly.UpdateCustomTLSCertificateInput) (*fastly.CustomTLSCertificate, error)
+	ListTLSActivations(input *fastly.ListTLSActivationsInput) ([]*fastly.TLSActivation, error)
+	CreateTLSActivation(input *fastly.CreateTLSActivationInput) (*fastly.TLSActivation, error)
+	DeleteTLSActivation(input *fastly.DeleteTLSActivationInput) error
+}
+
 // joinErrors combines multiple errors into a single error
 func joinErrors(errs []error) error {
 	return errors.Join(errs...)
