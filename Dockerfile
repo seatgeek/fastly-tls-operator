@@ -36,7 +36,7 @@ ENTRYPOINT ["/manager"]
 FROM gcr.io/distroless/static:nonroot AS final_prebuilt
 ARG TARGETARCH
 WORKDIR /
-COPY manager-${TARGETARCH} /workspace/manager
+COPY manager-${TARGETARCH} .
 USER 65532:65532
 ENTRYPOINT ["/manager"]
 
