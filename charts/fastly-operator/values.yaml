@@ -6,8 +6,8 @@ replicaCount: 1
 
 image:
   # Container registry (leave empty for default registry)
-  registry: ""
-  repository: fastly-operator
+  registry: "ghcr.io"
+  repository: seatgeek/fastly-operator
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: "latest"
