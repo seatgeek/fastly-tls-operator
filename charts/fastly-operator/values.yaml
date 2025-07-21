@@ -108,11 +108,6 @@ rbac:
   # Specifies whether RBAC resources should be created
   create: true
 
-# CRD configuration
-crds:
-  # Specifies whether CRDs should be installed
-  install: true
-
 # Node selector for pod assignment
 nodeSelector: {}
 
