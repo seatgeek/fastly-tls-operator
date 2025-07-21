@@ -5,6 +5,7 @@ go 1.24.0
 require (
 	github.com/cert-manager/cert-manager v1.18.2
 	github.com/fastly/go-fastly/v10 v10.5.1
+	github.com/go-logr/logr v1.4.2
 	github.com/seatgeek/k8s-reconciler-generic v1.12.0
 	github.com/seatgeek/k8s-reconciler-generic/apiobjects v1.12.0
 	k8s.io/api v0.33.0
@@ -29,7 +30,6 @@ require (
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
-	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/zapr v1.3.0 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/jsonreference v0.21.0 // indirect
