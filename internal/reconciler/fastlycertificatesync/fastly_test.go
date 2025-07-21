@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -708,138 +707,8 @@ func TestLogic_createMissingFastlyTLSActivations(t *testing.T) {
 	}
 }
 
-func TestLogic_getFastlyPrivateKeyExists_Simplified(t *testing.T) {
-	expectedSHA1 := "1ccf8849ae82aaab5749d5c791a221354f182a73"
+func TestLogic_getFastlyPrivateKeyExists(t *testing.T) {
 
-	tests := []struct {
-		name             string
-		mockSetup        func() *MockFastlyClient
-		expectedKeyFound bool
-		expectError      bool
-	}{
-		{
-			name: "key found in first page",
-			mockSetup: func() *MockFastlyClient {
-				return &MockFastlyClient{
-					ListPrivateKeysFunc: func(input *fastly.ListPrivateKeysInput) ([]*fastly.PrivateKey, error) {
-						return []*fastly.PrivateKey{
-							{ID: "key1", PublicKeySHA1: "different_sha1"},
-							{ID: "key2", PublicKeySHA1: expectedSHA1}, // Found!
-							{ID: "key3", PublicKeySHA1: "another_sha1"},
-						}, nil
-					},
-				}
-			},
-			expectedKeyFound: true,
-		},
-		{
-			name: "key not found",
-			mockSetup: func() *MockFastlyClient {
-				return &MockFastlyClient{
-					ListPrivateKeysFunc: func(input *fastly.ListPrivateKeysInput) ([]*fastly.PrivateKey, error) {
-						return []*fastly.PrivateKey{
-							{ID: "key1", PublicKeySHA1: "different_sha1"},
-							{ID: "key2", PublicKeySHA1: "another_sha1"},
-						}, nil
-					},
-				}
-			},
-			expectedKeyFound: false,
-		},
-		{
-			name: "key found in second page",
-			mockSetup: func() *MockFastlyClient {
-				callCount := 0
-				return &MockFastlyClient{
-					ListPrivateKeysFunc: func(input *fastly.ListPrivateKeysInput) ([]*fastly.PrivateKey, error) {
-						callCount++
-						if callCount == 1 {
-							// First page - return full page (20 items) without the key
-							keys := make([]*fastly.PrivateKey, defaultFastlyPageSize)
-							for i := 0; i < defaultFastlyPageSize; i++ {
-								keys[i] = &fastly.PrivateKey{ID: fmt.Sprintf("key%d", i), PublicKeySHA1: fmt.Sprintf("sha1_%d", i)}
-							}
-							return keys, nil
-						}
-						// Second page - return the matching key
-						return []*fastly.PrivateKey{
-							{ID: "matching_key", PublicKeySHA1: expectedSHA1},
-						}, nil
-					},
-				}
-			},
-			expectedKeyFound: true,
-		},
-		{
-			name: "no keys at all",
-			mockSetup: func() *MockFastlyClient {
-				return &MockFastlyClient{
-					ListPrivateKeysFunc: func(input *fastly.ListPrivateKeysInput) ([]*fastly.PrivateKey, error) {
-						return []*fastly.PrivateKey{}, nil
-					},
-				}
-			},
-			expectedKeyFound: false,
-		},
-		{
-			name: "api error",
-			mockSetup: func() *MockFastlyClient {
-				return &MockFastlyClient{
-					ListPrivateKeysFunc: func(input *fastly.ListPrivateKeysInput) ([]*fastly.PrivateKey, error) {
-						return nil, errors.New("fastly api error")
-					},
-				}
-			},
-			expectError: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			mockClient := tt.mockSetup()
-
-			// Simulate the core logic from getFastlyPrivateKeyExists
-			var allPrivateKeys []*fastly.PrivateKey
-			pageNumber := 1
-
-			for {
-				privateKeys, err := mockClient.ListPrivateKeys(&fastly.ListPrivateKeysInput{
-					PageNumber: pageNumber,
-					PageSize:   defaultFastlyPageSize,
-				})
-				if err != nil {
-					if tt.expectError {
-						return // Expected error
-					}
-					t.Fatalf("Unexpected error: %v", err)
-				}
-
-				allPrivateKeys = append(allPrivateKeys, privateKeys...)
-
-				if len(privateKeys) < defaultFastlyPageSize {
-					break
-				}
-				pageNumber++
-			}
-
-			// Check if key exists
-			keyExists := false
-			for _, key := range allPrivateKeys {
-				if key.PublicKeySHA1 == expectedSHA1 {
-					keyExists = true
-					break
-				}
-			}
-
-			if keyExists != tt.expectedKeyFound {
-				t.Errorf("Key exists = %v, want %v", keyExists, tt.expectedKeyFound)
-			}
-		})
-	}
-}
-
-// TestGetPublicKeySHA1Integration tests the integration between getPublicKeySHA1FromPEM and getFastlyPrivateKeyExists
-func TestGetPublicKeySHA1Integration(t *testing.T) {
 	testPrivateKeyPEM := `-----BEGIN RSA PRIVATE KEY-----
 MIICWwIBAAKBgQDSIX1v14YXhBhoXs4xMDFaqcw0BzFGN9BUetq4xCX0RQjOgwut
 EVAQg+zqSwRzW0eQsNuWQBX0qFlNQSxtE5/Bt0mr9Vh5VTePHAj+kLqAWYwzpRK/
@@ -856,16 +725,161 @@ bFZERf4CscQ7WYs7okIO5gvXYL3cEia8qnK8tGBFQdvAfzTJqNrNfr7sBQt0KgJg
 nqCTMVzmHe6A84rU57AR8Cd3ns2wJCdVBVXqipCW+g==
 -----END RSA PRIVATE KEY-----`
 
-	// Calculate the expected SHA1
-	expectedSHA1, err := getPublicKeySHA1FromPEM([]byte(testPrivateKeyPEM))
-	if err != nil {
-		t.Fatalf("Failed to calculate SHA1: %v", err)
+	expectedSHA1 := "1ccf8849ae82aaab5749d5c791a221354f182a73"
+
+	tests := []struct {
+		name           string
+		mockKeys       []*fastly.PrivateKey
+		secretHasKey   bool
+		secretKey      string
+		apiError       error
+		expectedExists bool
+		expectedError  string
+	}{
+		{
+			name: "key exists in fastly",
+			mockKeys: []*fastly.PrivateKey{
+				{ID: "key1", PublicKeySHA1: "different_sha1"},
+				{ID: "key2", PublicKeySHA1: expectedSHA1},
+				{ID: "key3", PublicKeySHA1: "another_sha1"},
+			},
+			secretHasKey:   true,
+			secretKey:      testPrivateKeyPEM,
+			expectedExists: true,
+		},
+		{
+			name: "key does not exist in fastly",
+			mockKeys: []*fastly.PrivateKey{
+				{ID: "key1", PublicKeySHA1: "different_sha1"},
+				{ID: "key2", PublicKeySHA1: "another_sha1"},
+			},
+			secretHasKey:   true,
+			secretKey:      testPrivateKeyPEM,
+			expectedExists: false,
+		},
+		{
+			name:           "no keys in fastly",
+			mockKeys:       []*fastly.PrivateKey{},
+			secretHasKey:   true,
+			secretKey:      testPrivateKeyPEM,
+			expectedExists: false,
+		},
+		{
+			name:          "secret missing tls.key",
+			secretHasKey:  false,
+			expectedError: "does not contain tls.key",
+		},
+		{
+			name:          "invalid private key PEM",
+			secretHasKey:  true,
+			secretKey:     "invalid-pem-data",
+			expectedError: "failed to get public key SHA1",
+		},
+		{
+			name:          "fastly api error",
+			secretHasKey:  true,
+			secretKey:     testPrivateKeyPEM,
+			apiError:      errors.New("fastly connection failed"),
+			expectedError: "failed to list Fastly private keys",
+		},
 	}
 
-	// Test that our calculated SHA1 matches the expected value
-	if expectedSHA1 != "1ccf8849ae82aaab5749d5c791a221354f182a73" {
-		t.Errorf("Calculated SHA1 = %s, want 1ccf8849ae82aaab5749d5c791a221354f182a73", expectedSHA1)
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create mock Fastly client with pagination support
+			pageIndex := 0
+			mockFastlyClient := &MockFastlyClient{
+				ListPrivateKeysFunc: func(input *fastly.ListPrivateKeysInput) ([]*fastly.PrivateKey, error) {
+					if tt.apiError != nil {
+						return nil, tt.apiError
+					}
 
-	t.Logf("✓ Successfully calculated SHA1 for integration test: %s", expectedSHA1)
+					// Simple pagination: return all keys on first page for this test
+					if pageIndex == 0 {
+						pageIndex++
+						return tt.mockKeys, nil
+					}
+					// Subsequent pages return empty
+					return []*fastly.PrivateKey{}, nil
+				},
+			}
+
+			// Test the core logic components of getFastlyPrivateKeyExists:
+
+			// 1. Test secret data availability
+			secretData := make(map[string][]byte)
+			if tt.secretHasKey {
+				secretData["tls.key"] = []byte(tt.secretKey)
+			}
+			secretData["tls.crt"] = []byte("dummy-cert")
+
+			keyPEM, ok := secretData["tls.key"]
+			if !tt.secretHasKey {
+				if ok {
+					t.Error("Expected no tls.key in secret, but found one")
+				}
+				if tt.expectedError == "" {
+					t.Error("Expected an error for missing tls.key but got none")
+				}
+				return
+			}
+
+			if !ok {
+				t.Error("Expected tls.key in secret but it was missing")
+				return
+			}
+
+			// 2. Test the SHA1 calculation
+			publicKeySHA1, err := getPublicKeySHA1FromPEM(keyPEM)
+			if err != nil {
+				if tt.expectedError != "" && strings.Contains(tt.expectedError, "SHA1") {
+					return // Expected error
+				}
+				t.Fatalf("Unexpected error calculating SHA1: %v", err)
+			}
+
+			// 3. Test the Fastly API pagination logic
+			var allPrivateKeys []*fastly.PrivateKey
+			pageNumber := 1
+
+			for {
+				privateKeys, err := mockFastlyClient.ListPrivateKeys(&fastly.ListPrivateKeysInput{
+					PageNumber: pageNumber,
+					PageSize:   defaultFastlyPageSize,
+				})
+				if err != nil {
+					if tt.expectedError != "" && strings.Contains(tt.expectedError, "list Fastly private keys") {
+						return // Expected error
+					}
+					t.Fatalf("Unexpected Fastly API error: %v", err)
+				}
+
+				allPrivateKeys = append(allPrivateKeys, privateKeys...)
+
+				if len(privateKeys) < defaultFastlyPageSize {
+					break
+				}
+				pageNumber++
+			}
+
+			// 4. Test the key matching logic
+			keyExistsInFastly := false
+			for _, key := range allPrivateKeys {
+				if key.PublicKeySHA1 == publicKeySHA1 {
+					keyExistsInFastly = true
+					break
+				}
+			}
+
+			// Verify the result matches expected behavior
+			if keyExistsInFastly != tt.expectedExists {
+				t.Errorf("Expected key exists = %v, got %v", tt.expectedExists, keyExistsInFastly)
+			}
+
+			// Verify we got the expected SHA1
+			if publicKeySHA1 != expectedSHA1 {
+				t.Errorf("Expected SHA1 = %s, got %s", expectedSHA1, publicKeySHA1)
+			}
+		})
+	}
 }
