@@ -23,7 +23,9 @@ type MockFastlyClient struct {
 	DeleteTLSActivationFunc        func(input *fastly.DeleteTLSActivationInput) error
 
 	// Track method calls
-	DeletePrivateKeyCalls []string
+	DeletePrivateKeyCalls    []string
+	DeleteTLSActivationCalls []string
+	CreateTLSActivationCalls []*fastly.CreateTLSActivationInput
 }
 
 func (m *MockFastlyClient) ListPrivateKeys(input *fastly.ListPrivateKeysInput) ([]*fastly.PrivateKey, error) {
@@ -79,6 +81,9 @@ func (m *MockFastlyClient) ListTLSActivations(input *fastly.ListTLSActivationsIn
 }
 
 func (m *MockFastlyClient) CreateTLSActivation(input *fastly.CreateTLSActivationInput) (*fastly.TLSActivation, error) {
+	// Track the call
+	m.CreateTLSActivationCalls = append(m.CreateTLSActivationCalls, input)
+
 	if m.CreateTLSActivationFunc != nil {
 		return m.CreateTLSActivationFunc(input)
 	}
@@ -86,6 +91,9 @@ func (m *MockFastlyClient) CreateTLSActivation(input *fastly.CreateTLSActivation
 }
 
 func (m *MockFastlyClient) DeleteTLSActivation(input *fastly.DeleteTLSActivationInput) error {
+	// Track the call
+	m.DeleteTLSActivationCalls = append(m.DeleteTLSActivationCalls, input.ID)
+
 	if m.DeleteTLSActivationFunc != nil {
 		return m.DeleteTLSActivationFunc(input)
 	}
@@ -442,6 +450,237 @@ invalidbase64data==
 			if tt.expectedSHA1 != "" {
 				if result != tt.expectedSHA1 {
 					t.Errorf("getPublicKeySHA1FromPEM() = %s, want %s", result, tt.expectedSHA1)
+				}
+			}
+		})
+	}
+}
+
+func TestLogic_deleteExtraFastlyTLSActivations(t *testing.T) {
+	tests := []struct {
+		name                  string
+		extraTLSActivationIDs []string
+		deleteErrors          map[string]error // Map of activationID -> error to return
+	}{
+		{
+			name:                  "successful deletion of multiple activations",
+			extraTLSActivationIDs: []string{"activation1", "activation2", "activation3"},
+			deleteErrors:          map[string]error{},
+		},
+		{
+			name:                  "no activations to delete",
+			extraTLSActivationIDs: []string{},
+			deleteErrors:          map[string]error{},
+		},
+		{
+			name:                  "successful deletion of single activation",
+			extraTLSActivationIDs: []string{"single-activation"},
+			deleteErrors:          map[string]error{},
+		},
+		{
+			name:                  "some deletions fail - should return error",
+			extraTLSActivationIDs: []string{"activation1", "activation2", "activation3"},
+			deleteErrors: map[string]error{
+				"activation1": errors.New("delete failed"),
+				"activation3": errors.New("another delete failed"),
+			},
+		},
+		{
+			name:                  "all deletions fail - should return error",
+			extraTLSActivationIDs: []string{"activation1", "activation2"},
+			deleteErrors: map[string]error{
+				"activation1": errors.New("delete failed"),
+				"activation2": errors.New("another delete failed"),
+			},
+		},
+		{
+			name:                  "mixed success and failure",
+			extraTLSActivationIDs: []string{"success-activation", "fail-activation", "another-success"},
+			deleteErrors: map[string]error{
+				"fail-activation": errors.New("this one fails"),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create mock client
+			mockClient := &MockFastlyClient{
+				DeleteTLSActivationCalls: []string{}, // Reset calls
+				DeleteTLSActivationFunc: func(input *fastly.DeleteTLSActivationInput) error {
+					// Return error if specified for this activation
+					if err, exists := tt.deleteErrors[input.ID]; exists {
+						return err
+					}
+					return nil
+				},
+			}
+
+			// Create Logic instance with mock client and observed state
+			logic := &Logic{
+				FastlyClient: mockClient,
+				ObservedState: ObservedState{
+					ExtraTLSActivationIDs: tt.extraTLSActivationIDs,
+				},
+			}
+
+			// Create a mock context (function ignores it anyway)
+			ctx := &Context{
+				Log: logr.Discard(),
+			}
+
+			// Call the actual function from fastly.go
+			err := logic.deleteExtraFastlyTLSActivations(ctx)
+
+			// Check error - expect error if any delete operations should fail
+			expectedError := len(tt.deleteErrors) > 0
+			if expectedError {
+				if err == nil {
+					t.Errorf("deleteExtraFastlyTLSActivations() expected error but got nil")
+				} else if !strings.Contains(err.Error(), "failed to delete TLS activations") {
+					t.Errorf("deleteExtraFastlyTLSActivations() error = %v, want error containing %q", err, "failed to delete TLS activations")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("deleteExtraFastlyTLSActivations() unexpected error = %v", err)
+				}
+			}
+
+			// Verify the correct delete calls were made - should attempt all deletions
+			if len(mockClient.DeleteTLSActivationCalls) != len(tt.extraTLSActivationIDs) {
+				t.Errorf("deleteExtraFastlyTLSActivations() made %d delete calls, want %d",
+					len(mockClient.DeleteTLSActivationCalls), len(tt.extraTLSActivationIDs))
+			}
+
+			// Verify each expected call was made in order
+			for i, expectedID := range tt.extraTLSActivationIDs {
+				if i >= len(mockClient.DeleteTLSActivationCalls) {
+					t.Errorf("deleteExtraFastlyTLSActivations() missing delete call %d for activation %s", i, expectedID)
+				} else if mockClient.DeleteTLSActivationCalls[i] != expectedID {
+					t.Errorf("deleteExtraFastlyTLSActivations() delete call %d = %s, want %s",
+						i, mockClient.DeleteTLSActivationCalls[i], expectedID)
+				}
+			}
+		})
+	}
+}
+
+func TestLogic_createMissingFastlyTLSActivations(t *testing.T) {
+	tests := []struct {
+		name                     string
+		missingTLSActivationData []TLSActivationData
+		createErrors             map[string]error // Map of configID -> error to return
+	}{
+		{
+			name: "successful creation of multiple activations",
+			missingTLSActivationData: []TLSActivationData{
+				{Certificate: &fastly.CustomTLSCertificate{ID: "cert1"}, Configuration: &fastly.TLSConfiguration{ID: "config1"}, Domain: &fastly.TLSDomain{ID: "domain1"}},
+				{Certificate: &fastly.CustomTLSCertificate{ID: "cert1"}, Configuration: &fastly.TLSConfiguration{ID: "config2"}, Domain: &fastly.TLSDomain{ID: "domain1"}},
+			},
+			createErrors: map[string]error{},
+		},
+		{
+			name:                     "no activations to create",
+			missingTLSActivationData: []TLSActivationData{},
+			createErrors:             map[string]error{},
+		},
+		{
+			name: "successful creation of single activation",
+			missingTLSActivationData: []TLSActivationData{
+				{Certificate: &fastly.CustomTLSCertificate{ID: "cert1"}, Configuration: &fastly.TLSConfiguration{ID: "config1"}, Domain: &fastly.TLSDomain{ID: "domain1"}},
+			},
+			createErrors: map[string]error{},
+		},
+		{
+			name: "some creations fail",
+			missingTLSActivationData: []TLSActivationData{
+				{Certificate: &fastly.CustomTLSCertificate{ID: "cert1"}, Configuration: &fastly.TLSConfiguration{ID: "config1"}, Domain: &fastly.TLSDomain{ID: "domain1"}},
+				{Certificate: &fastly.CustomTLSCertificate{ID: "cert1"}, Configuration: &fastly.TLSConfiguration{ID: "config2"}, Domain: &fastly.TLSDomain{ID: "domain1"}},
+			},
+			createErrors: map[string]error{
+				"config1": errors.New("create failed"),
+			},
+		},
+		{
+			name: "all creations fail",
+			missingTLSActivationData: []TLSActivationData{
+				{Certificate: &fastly.CustomTLSCertificate{ID: "cert1"}, Configuration: &fastly.TLSConfiguration{ID: "config1"}, Domain: &fastly.TLSDomain{ID: "domain1"}},
+			},
+			createErrors: map[string]error{
+				"config1": errors.New("create failed"),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create mock client
+			mockClient := &MockFastlyClient{
+				CreateTLSActivationCalls: []*fastly.CreateTLSActivationInput{}, // Reset calls
+				CreateTLSActivationFunc: func(input *fastly.CreateTLSActivationInput) (*fastly.TLSActivation, error) {
+					// Return error if specified for this configuration
+					if err, exists := tt.createErrors[input.Configuration.ID]; exists {
+						return nil, err
+					}
+					return &fastly.TLSActivation{ID: "new-activation"}, nil
+				},
+			}
+
+			// Create Logic instance with mock client and observed state
+			logic := &Logic{
+				FastlyClient: mockClient,
+				ObservedState: ObservedState{
+					MissingTLSActivationData: tt.missingTLSActivationData,
+				},
+			}
+
+			// Create a mock context (function ignores it anyway)
+			ctx := &Context{
+				Log: logr.Discard(),
+			}
+
+			// Call the actual function from fastly.go
+			err := logic.createMissingFastlyTLSActivations(ctx)
+
+			// Check error - expect error if any create operations should fail
+			expectedError := len(tt.createErrors) > 0
+			if expectedError {
+				if err == nil {
+					t.Errorf("createMissingFastlyTLSActivations() expected error but got nil")
+				} else if !strings.Contains(err.Error(), "failed to create TLS activations") {
+					t.Errorf("createMissingFastlyTLSActivations() error = %v, want error containing %q", err, "failed to create TLS activations")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("createMissingFastlyTLSActivations() unexpected error = %v", err)
+				}
+			}
+
+			// Verify the correct create calls were made - should attempt all creations
+			if len(mockClient.CreateTLSActivationCalls) != len(tt.missingTLSActivationData) {
+				t.Errorf("createMissingFastlyTLSActivations() made %d create calls, want %d",
+					len(mockClient.CreateTLSActivationCalls), len(tt.missingTLSActivationData))
+			}
+
+			// Verify each expected call was made in order with correct data
+			for i, expectedData := range tt.missingTLSActivationData {
+				if i >= len(mockClient.CreateTLSActivationCalls) {
+					t.Errorf("createMissingFastlyTLSActivations() missing create call %d", i)
+					continue
+				}
+
+				actualCall := mockClient.CreateTLSActivationCalls[i]
+				if actualCall.Certificate.ID != expectedData.Certificate.ID {
+					t.Errorf("createMissingFastlyTLSActivations() call %d certificate ID = %s, want %s",
+						i, actualCall.Certificate.ID, expectedData.Certificate.ID)
+				}
+				if actualCall.Configuration.ID != expectedData.Configuration.ID {
+					t.Errorf("createMissingFastlyTLSActivations() call %d configuration ID = %s, want %s",
+						i, actualCall.Configuration.ID, expectedData.Configuration.ID)
+				}
+				if actualCall.Domain.ID != expectedData.Domain.ID {
+					t.Errorf("createMissingFastlyTLSActivations() call %d domain ID = %s, want %s",
+						i, actualCall.Domain.ID, expectedData.Domain.ID)
 				}
 			}
 		})
