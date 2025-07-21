@@ -2,6 +2,30 @@ apiVersion: v1
 entries:
   fastly-operator:
   - apiVersion: v2
+    created: "2025-07-21T19:07:19.316223512Z"
+    description: Helm chart for Fastly Operator - manage Fastly state via Kubernetes
+    digest: c71182b90fac0527b6c6f7626ca5e4aebb79058965c80d8aaf6bd042b7e7bf7b
+    home: https://github.com/seatgeek/fastly-operator
+    keywords:
+    - fastly
+    - cdn
+    - tls
+    - certificates
+    - operator
+    - kubernetes
+    - controller
+    maintainers:
+    - email: platform@seatgeek.com
+      name: SeatGeek Platform Team
+      url: https://github.com/seatgeek
+    name: fastly-operator
+    sources:
+    - https://github.com/seatgeek/fastly-operator
+    type: application
+    urls:
+    - https://github.com/seatgeek/fastly-operator/releases/download/fastly-operator-0.2.2/fastly-operator-0.2.2.tgz
+    version: 0.2.2
+  - apiVersion: v2
     created: "2025-07-21T16:14:28.894639708Z"
     description: Helm chart for Fastly Operator - manage Fastly state via Kubernetes
     digest: a73e64c1725468f5736277e2b08ff8b0023e55b87e6f4062cb505b8c92764f23
@@ -121,4 +145,4 @@ entries:
     urls:
     - https://github.com/seatgeek/fastly-operator/releases/download/fastly-operator-0.1.1/fastly-operator-0.1.1.tgz
     version: 0.1.1
-generated: "2025-07-21T16:14:28.894663231Z"
+generated: "2025-07-21T19:07:19.316248465Z"
