@@ -49,7 +49,7 @@ securityContext: {}
 fastly:
   # Name of the secret containing the Fastly API key
   # Users are responsible for creating the secret themselves and referring to it here
-  secretName: fastly-secret
+  secretName: fastly-operator-secrets
   # Key within the secret containing the API key
   secretKey: api-key
 
