@@ -8,7 +8,7 @@ import (
 
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	"github.com/fastly-operator/api/v1alpha1"
-	"github.com/fastly/go-fastly/v10/fastly"
+	"github.com/fastly/go-fastly/v11/fastly"
 	"github.com/seatgeek/k8s-reconciler-generic/pkg/k8sutil"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"

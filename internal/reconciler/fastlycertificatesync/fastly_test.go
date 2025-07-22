@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fastly/go-fastly/v10/fastly"
+	"github.com/fastly/go-fastly/v11/fastly"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"

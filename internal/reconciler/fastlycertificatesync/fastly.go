@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
-	"github.com/fastly/go-fastly/v10/fastly"
+	"github.com/fastly/go-fastly/v11/fastly"
 	"k8s.io/apimachinery/pkg/types"
 )
 
