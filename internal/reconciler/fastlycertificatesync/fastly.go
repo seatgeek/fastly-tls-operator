@@ -1,6 +1,7 @@
 package fastlycertificatesync
 
 import (
+	"context"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
@@ -17,15 +18,15 @@ const (
 
 // FastlyClientInterface defines the Fastly API methods needed by the Logic struct
 type FastlyClientInterface interface {
-	ListPrivateKeys(input *fastly.ListPrivateKeysInput) ([]*fastly.PrivateKey, error)
-	CreatePrivateKey(input *fastly.CreatePrivateKeyInput) (*fastly.PrivateKey, error)
-	DeletePrivateKey(input *fastly.DeletePrivateKeyInput) error
-	ListCustomTLSCertificates(input *fastly.ListCustomTLSCertificatesInput) ([]*fastly.CustomTLSCertificate, error)
-	CreateCustomTLSCertificate(input *fastly.CreateCustomTLSCertificateInput) (*fastly.CustomTLSCertificate, error)
-	UpdateCustomTLSCertificate(input *fastly.UpdateCustomTLSCertificateInput) (*fastly.CustomTLSCertificate, error)
-	ListTLSActivations(input *fastly.ListTLSActivationsInput) ([]*fastly.TLSActivation, error)
-	CreateTLSActivation(input *fastly.CreateTLSActivationInput) (*fastly.TLSActivation, error)
-	DeleteTLSActivation(input *fastly.DeleteTLSActivationInput) error
+	ListPrivateKeys(ctx context.Context, input *fastly.ListPrivateKeysInput) ([]*fastly.PrivateKey, error)
+	CreatePrivateKey(ctx context.Context, input *fastly.CreatePrivateKeyInput) (*fastly.PrivateKey, error)
+	DeletePrivateKey(ctx context.Context, input *fastly.DeletePrivateKeyInput) error
+	ListCustomTLSCertificates(ctx context.Context, input *fastly.ListCustomTLSCertificatesInput) ([]*fastly.CustomTLSCertificate, error)
+	CreateCustomTLSCertificate(ctx context.Context, input *fastly.CreateCustomTLSCertificateInput) (*fastly.CustomTLSCertificate, error)
+	UpdateCustomTLSCertificate(ctx context.Context, input *fastly.UpdateCustomTLSCertificateInput) (*fastly.CustomTLSCertificate, error)
+	ListTLSActivations(ctx context.Context, input *fastly.ListTLSActivationsInput) ([]*fastly.TLSActivation, error)
+	CreateTLSActivation(ctx context.Context, input *fastly.CreateTLSActivationInput) (*fastly.TLSActivation, error)
+	DeleteTLSActivation(ctx context.Context, input *fastly.DeleteTLSActivationInput) error
 }
 
 // joinErrors combines multiple errors into a single error
@@ -50,7 +51,7 @@ func (l *Logic) getFastlyPrivateKeyExists(ctx *Context) (bool, error) {
 	pageNumber := 1
 
 	for {
-		privateKeys, err := l.FastlyClient.ListPrivateKeys(&fastly.ListPrivateKeysInput{
+		privateKeys, err := l.FastlyClient.ListPrivateKeys(ctx, &fastly.ListPrivateKeysInput{
 			PageNumber: pageNumber,
 			PageSize:   defaultFastlyPageSize,
 		})
@@ -101,7 +102,7 @@ func (l *Logic) createFastlyPrivateKey(ctx *Context) error {
 		return fmt.Errorf("secret %s/%s does not contain tls.key", secret.Namespace, secret.Name)
 	}
 
-	createResp, err := l.FastlyClient.CreatePrivateKey(&fastly.CreatePrivateKeyInput{
+	createResp, err := l.FastlyClient.CreatePrivateKey(ctx, &fastly.CreatePrivateKeyInput{
 		Key:  string(keyPEM),
 		Name: secret.Name,
 	})
@@ -152,7 +153,7 @@ func (l *Logic) getFastlyCertificateMatchingSubject(ctx *Context) (*fastly.Custo
 	pageNumber := 1
 
 	for {
-		certs, err := l.FastlyClient.ListCustomTLSCertificates(&fastly.ListCustomTLSCertificatesInput{
+		certs, err := l.FastlyClient.ListCustomTLSCertificates(ctx, &fastly.ListCustomTLSCertificatesInput{
 			PageNumber: pageNumber,
 			PageSize:   defaultFastlyPageSize,
 		})
@@ -194,7 +195,7 @@ func (l *Logic) createFastlyCertificate(ctx *Context) error {
 		return fmt.Errorf("failed to get CertPEM for Fastly certificate: %w", err)
 	}
 
-	_, err = l.FastlyClient.CreateCustomTLSCertificate(&fastly.CreateCustomTLSCertificateInput{
+	_, err = l.FastlyClient.CreateCustomTLSCertificate(ctx, &fastly.CreateCustomTLSCertificateInput{
 		CertBlob:           string(certPEM),
 		Name:               subjectCertificate.Name,
 		AllowUntrustedRoot: ctx.Config.HackFastlyCertificateSyncLocalReconciliation,
@@ -226,7 +227,7 @@ func (l *Logic) updateFastlyCertificate(ctx *Context) error {
 		return fmt.Errorf("fastly certificate not found")
 	}
 
-	_, err = l.FastlyClient.UpdateCustomTLSCertificate(&fastly.UpdateCustomTLSCertificateInput{
+	_, err = l.FastlyClient.UpdateCustomTLSCertificate(ctx, &fastly.UpdateCustomTLSCertificateInput{
 		CertBlob:           string(certPEM),
 		Name:               subjectCertificate.Name,
 		ID:                 fastlyCertificate.ID,
@@ -318,7 +319,7 @@ func (l *Logic) getFastlyDomainAndConfigurationToActivationMap(ctx *Context, cer
 	pageNumber := 1
 
 	for {
-		activations, err := l.FastlyClient.ListTLSActivations(&fastly.ListTLSActivationsInput{
+		activations, err := l.FastlyClient.ListTLSActivations(ctx, &fastly.ListTLSActivationsInput{
 			FilterTLSCertificateID: cert.ID,
 			PageNumber:             pageNumber,
 			PageSize:               defaultFastlyPageSize,
@@ -349,12 +350,12 @@ func (l *Logic) getFastlyDomainAndConfigurationToActivationMap(ctx *Context, cer
 	return domainAndConfigurationToActivation, nil
 }
 
-func (l *Logic) createMissingFastlyTLSActivations(_ *Context) error {
+func (l *Logic) createMissingFastlyTLSActivations(ctx *Context) error {
 	var errors []error
 
 	for _, activationData := range l.ObservedState.MissingTLSActivationData {
 		// Create new activation
-		_, err := l.FastlyClient.CreateTLSActivation(&fastly.CreateTLSActivationInput{
+		_, err := l.FastlyClient.CreateTLSActivation(ctx, &fastly.CreateTLSActivationInput{
 			Certificate:   activationData.Certificate,
 			Configuration: activationData.Configuration,
 			Domain:        activationData.Domain,
@@ -370,11 +371,11 @@ func (l *Logic) createMissingFastlyTLSActivations(_ *Context) error {
 	return nil
 }
 
-func (l *Logic) deleteExtraFastlyTLSActivations(_ *Context) error {
+func (l *Logic) deleteExtraFastlyTLSActivations(ctx *Context) error {
 	var errors []error
 
 	for _, activationID := range l.ObservedState.ExtraTLSActivationIDs {
-		err := l.FastlyClient.DeleteTLSActivation(&fastly.DeleteTLSActivationInput{ID: activationID})
+		err := l.FastlyClient.DeleteTLSActivation(ctx, &fastly.DeleteTLSActivationInput{ID: activationID})
 		if err != nil {
 			errors = append(errors, fmt.Errorf("failed to delete TLS activation %s: %w", activationID, err))
 		}
@@ -386,8 +387,8 @@ func (l *Logic) deleteExtraFastlyTLSActivations(_ *Context) error {
 	return nil
 }
 
-func (l *Logic) getFastlyUnusedPrivateKeyIDs(_ *Context) ([]string, error) {
-	privateKeys, err := l.FastlyClient.ListPrivateKeys(&fastly.ListPrivateKeysInput{FilterInUse: "false"})
+func (l *Logic) getFastlyUnusedPrivateKeyIDs(ctx *Context) ([]string, error) {
+	privateKeys, err := l.FastlyClient.ListPrivateKeys(ctx, &fastly.ListPrivateKeysInput{FilterInUse: "false"})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list Fastly private keys: %w", err)
 	}
@@ -402,7 +403,7 @@ func (l *Logic) getFastlyUnusedPrivateKeyIDs(_ *Context) ([]string, error) {
 func (l *Logic) clearFastlyUnusedPrivateKeys(ctx *Context) {
 	for _, privateKeyID := range l.ObservedState.UnusedPrivateKeyIDs {
 		ctx.Log.Info(fmt.Sprintf("attempting to delete unused private key %s", privateKeyID))
-		if err := l.FastlyClient.DeletePrivateKey(&fastly.DeletePrivateKeyInput{ID: privateKeyID}); err != nil {
+		if err := l.FastlyClient.DeletePrivateKey(ctx, &fastly.DeletePrivateKeyInput{ID: privateKeyID}); err != nil {
 			// Deleting a private key has some inconsistencies on Fastly's end.
 			// It is never critical to delete a private key, we only need deletion to be eventually consistent.
 			// We effectively swallow the error, but notify via an info log that wont trigger a monitor.

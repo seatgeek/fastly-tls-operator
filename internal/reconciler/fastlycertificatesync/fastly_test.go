@@ -15,15 +15,15 @@ import (
 
 // MockFastlyClient implements FastlyClientInterface for testing
 type MockFastlyClient struct {
-	ListPrivateKeysFunc            func(input *fastly.ListPrivateKeysInput) ([]*fastly.PrivateKey, error)
-	CreatePrivateKeyFunc           func(input *fastly.CreatePrivateKeyInput) (*fastly.PrivateKey, error)
-	DeletePrivateKeyFunc           func(input *fastly.DeletePrivateKeyInput) error
-	ListCustomTLSCertificatesFunc  func(input *fastly.ListCustomTLSCertificatesInput) ([]*fastly.CustomTLSCertificate, error)
-	CreateCustomTLSCertificateFunc func(input *fastly.CreateCustomTLSCertificateInput) (*fastly.CustomTLSCertificate, error)
-	UpdateCustomTLSCertificateFunc func(input *fastly.UpdateCustomTLSCertificateInput) (*fastly.CustomTLSCertificate, error)
-	ListTLSActivationsFunc         func(input *fastly.ListTLSActivationsInput) ([]*fastly.TLSActivation, error)
-	CreateTLSActivationFunc        func(input *fastly.CreateTLSActivationInput) (*fastly.TLSActivation, error)
-	DeleteTLSActivationFunc        func(input *fastly.DeleteTLSActivationInput) error
+	ListPrivateKeysFunc            func(ctx context.Context, input *fastly.ListPrivateKeysInput) ([]*fastly.PrivateKey, error)
+	CreatePrivateKeyFunc           func(ctx context.Context, input *fastly.CreatePrivateKeyInput) (*fastly.PrivateKey, error)
+	DeletePrivateKeyFunc           func(ctx context.Context, input *fastly.DeletePrivateKeyInput) error
+	ListCustomTLSCertificatesFunc  func(ctx context.Context, input *fastly.ListCustomTLSCertificatesInput) ([]*fastly.CustomTLSCertificate, error)
+	CreateCustomTLSCertificateFunc func(ctx context.Context, input *fastly.CreateCustomTLSCertificateInput) (*fastly.CustomTLSCertificate, error)
+	UpdateCustomTLSCertificateFunc func(ctx context.Context, input *fastly.UpdateCustomTLSCertificateInput) (*fastly.CustomTLSCertificate, error)
+	ListTLSActivationsFunc         func(ctx context.Context, input *fastly.ListTLSActivationsInput) ([]*fastly.TLSActivation, error)
+	CreateTLSActivationFunc        func(ctx context.Context, input *fastly.CreateTLSActivationInput) (*fastly.TLSActivation, error)
+	DeleteTLSActivationFunc        func(ctx context.Context, input *fastly.DeleteTLSActivationInput) error
 
 	// Track method calls
 	DeletePrivateKeyCalls    []string
@@ -48,74 +48,74 @@ type MockContextClient struct {
 	Client *MockKubernetesClient
 }
 
-func (m *MockFastlyClient) ListPrivateKeys(input *fastly.ListPrivateKeysInput) ([]*fastly.PrivateKey, error) {
+func (m *MockFastlyClient) ListPrivateKeys(ctx context.Context, input *fastly.ListPrivateKeysInput) ([]*fastly.PrivateKey, error) {
 	if m.ListPrivateKeysFunc != nil {
-		return m.ListPrivateKeysFunc(input)
+		return m.ListPrivateKeysFunc(ctx, input)
 	}
 	return nil, nil
 }
 
-func (m *MockFastlyClient) CreatePrivateKey(input *fastly.CreatePrivateKeyInput) (*fastly.PrivateKey, error) {
+func (m *MockFastlyClient) CreatePrivateKey(ctx context.Context, input *fastly.CreatePrivateKeyInput) (*fastly.PrivateKey, error) {
 	if m.CreatePrivateKeyFunc != nil {
-		return m.CreatePrivateKeyFunc(input)
+		return m.CreatePrivateKeyFunc(ctx, input)
 	}
 	return nil, nil
 }
 
-func (m *MockFastlyClient) DeletePrivateKey(input *fastly.DeletePrivateKeyInput) error {
+func (m *MockFastlyClient) DeletePrivateKey(ctx context.Context, input *fastly.DeletePrivateKeyInput) error {
 	// Track the call
 	m.DeletePrivateKeyCalls = append(m.DeletePrivateKeyCalls, input.ID)
 
 	if m.DeletePrivateKeyFunc != nil {
-		return m.DeletePrivateKeyFunc(input)
+		return m.DeletePrivateKeyFunc(ctx, input)
 	}
 	return nil
 }
 
-func (m *MockFastlyClient) ListCustomTLSCertificates(input *fastly.ListCustomTLSCertificatesInput) ([]*fastly.CustomTLSCertificate, error) {
+func (m *MockFastlyClient) ListCustomTLSCertificates(ctx context.Context, input *fastly.ListCustomTLSCertificatesInput) ([]*fastly.CustomTLSCertificate, error) {
 	if m.ListCustomTLSCertificatesFunc != nil {
-		return m.ListCustomTLSCertificatesFunc(input)
+		return m.ListCustomTLSCertificatesFunc(ctx, input)
 	}
 	return nil, nil
 }
 
-func (m *MockFastlyClient) CreateCustomTLSCertificate(input *fastly.CreateCustomTLSCertificateInput) (*fastly.CustomTLSCertificate, error) {
+func (m *MockFastlyClient) CreateCustomTLSCertificate(ctx context.Context, input *fastly.CreateCustomTLSCertificateInput) (*fastly.CustomTLSCertificate, error) {
 	if m.CreateCustomTLSCertificateFunc != nil {
-		return m.CreateCustomTLSCertificateFunc(input)
+		return m.CreateCustomTLSCertificateFunc(ctx, input)
 	}
 	return nil, nil
 }
 
-func (m *MockFastlyClient) UpdateCustomTLSCertificate(input *fastly.UpdateCustomTLSCertificateInput) (*fastly.CustomTLSCertificate, error) {
+func (m *MockFastlyClient) UpdateCustomTLSCertificate(ctx context.Context, input *fastly.UpdateCustomTLSCertificateInput) (*fastly.CustomTLSCertificate, error) {
 	if m.UpdateCustomTLSCertificateFunc != nil {
-		return m.UpdateCustomTLSCertificateFunc(input)
+		return m.UpdateCustomTLSCertificateFunc(ctx, input)
 	}
 	return nil, nil
 }
 
-func (m *MockFastlyClient) ListTLSActivations(input *fastly.ListTLSActivationsInput) ([]*fastly.TLSActivation, error) {
+func (m *MockFastlyClient) ListTLSActivations(ctx context.Context, input *fastly.ListTLSActivationsInput) ([]*fastly.TLSActivation, error) {
 	if m.ListTLSActivationsFunc != nil {
-		return m.ListTLSActivationsFunc(input)
+		return m.ListTLSActivationsFunc(ctx, input)
 	}
 	return nil, nil
 }
 
-func (m *MockFastlyClient) CreateTLSActivation(input *fastly.CreateTLSActivationInput) (*fastly.TLSActivation, error) {
+func (m *MockFastlyClient) CreateTLSActivation(ctx context.Context, input *fastly.CreateTLSActivationInput) (*fastly.TLSActivation, error) {
 	// Track the call
 	m.CreateTLSActivationCalls = append(m.CreateTLSActivationCalls, input)
 
 	if m.CreateTLSActivationFunc != nil {
-		return m.CreateTLSActivationFunc(input)
+		return m.CreateTLSActivationFunc(ctx, input)
 	}
 	return nil, nil
 }
 
-func (m *MockFastlyClient) DeleteTLSActivation(input *fastly.DeleteTLSActivationInput) error {
+func (m *MockFastlyClient) DeleteTLSActivation(ctx context.Context, input *fastly.DeleteTLSActivationInput) error {
 	// Track the call
 	m.DeleteTLSActivationCalls = append(m.DeleteTLSActivationCalls, input.ID)
 
 	if m.DeleteTLSActivationFunc != nil {
-		return m.DeleteTLSActivationFunc(input)
+		return m.DeleteTLSActivationFunc(ctx, input)
 	}
 	return nil
 }
@@ -222,7 +222,7 @@ func TestLogic_getFastlyUnusedPrivateKeyIDs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create mock client
 			mockClient := &MockFastlyClient{
-				ListPrivateKeysFunc: func(input *fastly.ListPrivateKeysInput) ([]*fastly.PrivateKey, error) {
+				ListPrivateKeysFunc: func(ctx context.Context, input *fastly.ListPrivateKeysInput) ([]*fastly.PrivateKey, error) {
 					// Verify the correct filter is set
 					if input.FilterInUse != "false" {
 						t.Errorf("Expected FilterInUse = 'false', got %q", input.FilterInUse)
@@ -325,7 +325,7 @@ func TestLogic_clearFastlyUnusedPrivateKeys(t *testing.T) {
 			// Create mock client
 			mockClient := &MockFastlyClient{
 				DeletePrivateKeyCalls: []string{}, // Reset calls
-				DeletePrivateKeyFunc: func(input *fastly.DeletePrivateKeyInput) error {
+				DeletePrivateKeyFunc: func(ctx context.Context, input *fastly.DeletePrivateKeyInput) error {
 					// Return error if specified for this key
 					if err, exists := tt.deleteErrors[input.ID]; exists {
 						return err
@@ -527,7 +527,7 @@ func TestLogic_deleteExtraFastlyTLSActivations(t *testing.T) {
 			// Create mock client
 			mockClient := &MockFastlyClient{
 				DeleteTLSActivationCalls: []string{}, // Reset calls
-				DeleteTLSActivationFunc: func(input *fastly.DeleteTLSActivationInput) error {
+				DeleteTLSActivationFunc: func(ctx context.Context, input *fastly.DeleteTLSActivationInput) error {
 					// Return error if specified for this activation
 					if err, exists := tt.deleteErrors[input.ID]; exists {
 						return err
@@ -637,7 +637,7 @@ func TestLogic_createMissingFastlyTLSActivations(t *testing.T) {
 			// Create mock client
 			mockClient := &MockFastlyClient{
 				CreateTLSActivationCalls: []*fastly.CreateTLSActivationInput{}, // Reset calls
-				CreateTLSActivationFunc: func(input *fastly.CreateTLSActivationInput) (*fastly.TLSActivation, error) {
+				CreateTLSActivationFunc: func(ctx context.Context, input *fastly.CreateTLSActivationInput) (*fastly.TLSActivation, error) {
 					// Return error if specified for this configuration
 					if err, exists := tt.createErrors[input.Configuration.ID]; exists {
 						return nil, err
@@ -789,7 +789,7 @@ nqCTMVzmHe6A84rU57AR8Cd3ns2wJCdVBVXqipCW+g==
 			// Create mock Fastly client with pagination support
 			pageIndex := 0
 			mockFastlyClient := &MockFastlyClient{
-				ListPrivateKeysFunc: func(input *fastly.ListPrivateKeysInput) ([]*fastly.PrivateKey, error) {
+				ListPrivateKeysFunc: func(ctx context.Context, input *fastly.ListPrivateKeysInput) ([]*fastly.PrivateKey, error) {
 					if tt.apiError != nil {
 						return nil, tt.apiError
 					}
@@ -843,7 +843,7 @@ nqCTMVzmHe6A84rU57AR8Cd3ns2wJCdVBVXqipCW+g==
 			pageNumber := 1
 
 			for {
-				privateKeys, err := mockFastlyClient.ListPrivateKeys(&fastly.ListPrivateKeysInput{
+				privateKeys, err := mockFastlyClient.ListPrivateKeys(context.Background(), &fastly.ListPrivateKeysInput{
 					PageNumber: pageNumber,
 					PageSize:   defaultFastlyPageSize,
 				})
