@@ -60,9 +60,14 @@ type ObservedState struct {
 type Logic struct {
 	genrec.WithoutFinalizationMixin[*v1alpha1.FastlyCertificateSync, *Config]
 	rm.ResourceManager[*Context]
-	Config        RuntimeConfig
-	FastlyClient  FastlyClientInterface
-	ObservedState ObservedState
+	Config       RuntimeConfig
+	FastlyClient FastlyClientInterface
+	// For the following state, we make sure that:
+	// * Always reset state at the beginning of `ObserveResources`
+	// * Only set state during `ObserveResources`
+	// * Only read state during `ApplyUnmanaged`
+	ObservedState                 ObservedState
+	SubjectReadyForReconciliation bool
 }
 
 func (l *Logic) NewSubject() *v1alpha1.FastlyCertificateSync {
@@ -129,12 +134,13 @@ func (l *Logic) ConfigureController(cb *builder.Builder, cluster cluster.Cluster
 		for _, fastlyCertificateSync := range all.Items {
 			// reconcile fastlyCertificateSync resources that are referenced by the watched certificate
 			if (object.GetName() == fastlyCertificateSync.Spec.CertificateName) && (object.GetNamespace() == fastlyCertificateSync.GetNamespace()) {
-				ctrl.Log.Info("reconciling FastlyCertificateSync", "name", fastlyCertificateSync.Name, "namespace", fastlyCertificateSync.Namespace)
+
 				res = append(res, reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Name:      fastlyCertificateSync.GetName(),
 						Namespace: fastlyCertificateSync.GetNamespace(),
-					}})
+					},
+				})
 			}
 		}
 
@@ -162,14 +168,22 @@ func (l *Logic) Validate(svc *v1alpha1.FastlyCertificateSync) error {
 func (l *Logic) ObserveResources(ctx *Context) (genrec.Resources, error) {
 	ctx.Log.Info("observing resources for FastlyCertificateSync", "name", ctx.Subject.Name, "namespace", ctx.Subject.Namespace)
 
+	// Allow `ApplyUnmanaged` to differentiate between:
+	// * A subject that isn't ready for reconciliation (certificate and secret not available)
+	// * An initially empty ObservedState indicating that we want to start taking action.
+	l.SubjectReadyForReconciliation = false
+
+	// Always start with fresh observation state, avoid sharing data between reconciliations
+	l.ObservedState = ObservedState{}
+
 	if _, _, err := getCertificateAndTLSSecretFromSubject(ctx); err != nil {
 		ctx.Log.Info("Certificate and Secret not available, we will not reconcile this FastlyCertificateSync", "name", ctx.Subject.Name, "namespace", ctx.Subject.Namespace)
 		return genrec.Resources{}, nil
 	}
 
-	// Always start with fresh observation state, avoid sharing data between reconciliations
-	l.ObservedState = ObservedState{}
+	l.SubjectReadyForReconciliation = true
 
+	// Begin observation
 	// First, the private key must exist in Fastly
 	fastlyPrivateKeyExists, err := l.getFastlyPrivateKeyExists(ctx)
 	if err != nil {
@@ -203,6 +217,12 @@ func (l *Logic) ObserveResources(ctx *Context) (genrec.Resources, error) {
 }
 
 func (l *Logic) ApplyUnmanaged(ctx *Context) error {
+
+	if !l.SubjectReadyForReconciliation {
+		ctx.Log.Info("Subject is not ready for reconciliation, skipping")
+		return nil
+	}
+
 	ctx.Log.Info("applying unmanaged FastlyCertificateSync", "name", ctx.Subject.Name, "namespace", ctx.Subject.Namespace)
 
 	if !l.ObservedState.PrivateKeyUploaded {
