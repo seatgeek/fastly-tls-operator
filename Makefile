@@ -247,6 +247,7 @@ manifests: controller-gen
 	@echo "Syncing CRDs to Helm chart..."
 	@mkdir -p charts/fastly-operator/crds
 	@cp config/crd/bases/*.yaml charts/fastly-operator/crds/
+	@mv charts/fastly-operator/crds/platform.seatgeek.io_fastlycertificatesyncs.yaml charts/fastly-operator/crds/fastlycertificatesyncs.platform.seatgeek.io.yaml
 
 # Download kustomize locally if necessary
 kustomize: $(KUSTOMIZE)
