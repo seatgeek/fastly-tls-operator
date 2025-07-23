@@ -167,6 +167,9 @@ func (l *Logic) ObserveResources(ctx *Context) (genrec.Resources, error) {
 		return genrec.Resources{}, nil
 	}
 
+	// Always start with fresh observation state, avoid sharing data between reconciliations
+	l.ObservedState = ObservedState{}
+
 	// First, the private key must exist in Fastly
 	fastlyPrivateKeyExists, err := l.getFastlyPrivateKeyExists(ctx)
 	if err != nil {
