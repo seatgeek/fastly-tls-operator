@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"time"
 
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	"github.com/fastly-operator/api/v1alpha1"
@@ -178,6 +179,11 @@ func (l *Logic) ObserveResources(ctx *Context) (genrec.Resources, error) {
 
 	if _, _, err := getCertificateAndTLSSecretFromSubject(ctx); err != nil {
 		ctx.Log.Info("Certificate and Secret not available, we will not reconcile this FastlyCertificateSync", "name", ctx.Subject.Name, "namespace", ctx.Subject.Namespace)
+
+		// Requeue immediately after altering state
+		ctx.Log.Info("Requeueing in 30s")
+		ctx.SetRequeue(30 * time.Second)
+
 		return genrec.Resources{}, nil
 	}
 
