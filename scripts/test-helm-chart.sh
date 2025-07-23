@@ -192,6 +192,7 @@ install_helm_chart() {
     helm upgrade --install "${RELEASE_NAME}" "${CHART_PATH}" \
         --kube-context="${KIND_CONTEXT}" \
         --namespace="${CHART_INSTALL_NAMESPACE}" \
+        --set image.registry="" \
         --set image.repository="${IMAGE_NAME}" \
         --set image.tag="${IMAGE_TAG}" \
         --set image.pullPolicy=Never \

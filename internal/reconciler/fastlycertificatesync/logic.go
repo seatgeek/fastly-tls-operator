@@ -162,6 +162,11 @@ func (l *Logic) Validate(svc *v1alpha1.FastlyCertificateSync) error {
 func (l *Logic) ObserveResources(ctx *Context) (genrec.Resources, error) {
 	ctx.Log.Info("observing resources for FastlyCertificateSync", "name", ctx.Subject.Name, "namespace", ctx.Subject.Namespace)
 
+	if _, _, err := getCertificateAndTLSSecretFromSubject(ctx); err != nil {
+		ctx.Log.Info("Certificate and Secret not available, we will not reconcile this FastlyCertificateSync", "name", ctx.Subject.Name, "namespace", ctx.Subject.Namespace)
+		return genrec.Resources{}, nil
+	}
+
 	// First, the private key must exist in Fastly
 	fastlyPrivateKeyExists, err := l.getFastlyPrivateKeyExists(ctx)
 	if err != nil {

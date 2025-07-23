@@ -281,6 +281,12 @@ func (l *Logic) getFastlyTLSActivationState(ctx *Context) ([]TLSActivationData, 
 		return nil, nil, fmt.Errorf("failed to get Fastly certificate matching subject: %w", err)
 	}
 
+	// If no certificate exists in Fastly yet, there can be no TLS activations
+	if fastlyCertificate == nil {
+		ctx.Log.Info("No certificate found in Fastly, skipping TLS activation checks")
+		return missingTLSActivationData, extraTLSActivationIDs, nil
+	}
+
 	domainAndConfigurationToActivation, err := l.getFastlyDomainAndConfigurationToActivationMap(ctx, fastlyCertificate)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get Fastly domain and configuration to activation map: %w", err)
