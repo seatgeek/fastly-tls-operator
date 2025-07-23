@@ -8,9 +8,29 @@ import (
 	"fmt"
 
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
+	cmmetav1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
+
+// Determine if the subject is ready for reconciliation
+// Certificate and Secret must exist
+// Certificate must be in the ready state
+func isSubjectReadyForReconciliation(ctx *Context) bool {
+	var certificate *cmv1.Certificate
+	var err error
+	if certificate, _, err = getCertificateAndTLSSecretFromSubject(ctx); err != nil {
+		ctx.Log.Info("Certificate and Secret not available, we will not reconcile this FastlyCertificateSync", "name", ctx.Subject.Name, "namespace", ctx.Subject.Namespace)
+		return false
+	}
+
+	for _, condition := range certificate.Status.Conditions {
+		if condition.Type == cmv1.CertificateConditionReady && condition.Status == cmmetav1.ConditionTrue {
+			return true
+		}
+	}
+	return false
+}
 
 // Helper function to retrieve the TLS secret from the context.
 // Gets the certificate from the subject reference, and then gets the secret from the certificate reference.

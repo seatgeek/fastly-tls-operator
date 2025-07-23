@@ -177,10 +177,8 @@ func (l *Logic) ObserveResources(ctx *Context) (genrec.Resources, error) {
 	// Always start with fresh observation state, avoid sharing data between reconciliations
 	l.ObservedState = ObservedState{}
 
-	if _, _, err := getCertificateAndTLSSecretFromSubject(ctx); err != nil {
-		ctx.Log.Info("Certificate and Secret not available, we will not reconcile this FastlyCertificateSync", "name", ctx.Subject.Name, "namespace", ctx.Subject.Namespace)
-
-		// Requeue immediately after altering state
+	if !isSubjectReadyForReconciliation(ctx) {
+		// Requeue after 30s to allow the certificate to be created and ready for reconciliation
 		ctx.Log.Info("Requeueing in 30s")
 		ctx.SetRequeue(30 * time.Second)
 
