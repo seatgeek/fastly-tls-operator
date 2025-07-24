@@ -48,8 +48,22 @@ jobs:
     - name: Run golangci-lint
       run: golangci-lint run
 
-    - name: Run tests
-      run: go test -v ./...
+    - name: Run tests with coverage
+      run: go test -v -coverprofile=coverage.out ./...
+
+    - name: Generate coverage report
+      run: |
+        go tool cover -func=coverage.out
+        COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print substr($3, 1, length($3)-1)}')
+        echo "Total Coverage: ${COVERAGE}%"
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.out
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
 
     - name: Check go mod tidy
       run: |

@@ -52,7 +52,7 @@ help:
 	@echo "  lint          - Run golangci-lint (same as CI)"
 	@echo "  fmt           - Run go fmt"
 	@echo "  vet           - Run go vet"
-	@echo "  test          - Run tests"
+	@echo "  test          - Run tests with coverage"
 	@echo "  check         - Run all code quality checks (fmt, vet, lint, test)"
 	@echo ""
 	@echo "Kind Cluster Management:"
@@ -151,10 +151,16 @@ vet:
 	@echo "Running go vet..."
 	go vet ./...
 
-# Run tests
+# Run tests with coverage
 test:
-	@echo "Running tests..."
-	go test -v ./...
+	@echo "Running tests with coverage..."
+	go test -v -coverprofile=coverage.out ./...
+	@echo "Coverage by package:"
+	@go tool cover -func=coverage.out
+	@echo ""
+	@echo "Total coverage: $$(go tool cover -func=coverage.out | grep total | awk '{print $$3}')"
+
+
 
 # Run all code quality checks (mimics CI)
 check: fmt vet lint test

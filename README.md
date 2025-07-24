@@ -1,5 +1,8 @@
 # Fastly Operator
 
+[![Build Status](https://github.com/seatgeek/fastly-operator/workflows/CI/badge.svg)](https://github.com/seatgeek/fastly-operator/actions)
+[![Codecov](https://img.shields.io/codecov/c/github/seatgeek/fastly-operator?style=flat-square)](https://codecov.io/gh/seatgeek/fastly-operator)
+
 A Go project that builds Kubernetes controllers for Fastly services.
 
 ## Currently In Development
@@ -73,8 +76,18 @@ make kind-create   - Create kind cluster
 make kind-load     - Load Docker image into kind cluster
 make kind-deploy   - Build and deploy to kind cluster
 make kind-delete   - Delete kind cluster
+make test          - Run tests with coverage
 make clean         - Clean build artifacts
 ```
+
+## Test Coverage
+
+The project includes test coverage reporting:
+
+- Run `make test` to see coverage output in the terminal
+- Coverage data is automatically generated in `coverage.out`
+- Coverage reports are uploaded to [Codecov](https://codecov.io/gh/seatgeek/fastly-operator) automatically by CI
+- Current coverage percentage is shown in the Codecov badge above
 
 ## Kubernetes Resources
 
