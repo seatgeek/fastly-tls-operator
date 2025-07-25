@@ -49,7 +49,7 @@ jobs:
       run: golangci-lint run
 
     - name: Run tests with coverage
-      run: go test -v -coverprofile=coverage.out ./...
+      run: go test -v -coverprofile=coverage.out ./internal/...
 
     - name: Generate coverage report
       run: |

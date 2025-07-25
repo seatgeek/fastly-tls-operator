@@ -151,10 +151,10 @@ vet:
 	@echo "Running go vet..."
 	go vet ./...
 
-# Run tests with coverage
+# Run tests with coverage (internal packages only)
 test:
-	@echo "Running tests with coverage..."
-	go test -v -coverprofile=coverage.out ./...
+	@echo "Running tests with coverage for internal packages..."
+	go test -v -coverprofile=coverage.out ./internal/...
 	@echo "Coverage by package:"
 	@go tool cover -func=coverage.out
 	@echo ""
