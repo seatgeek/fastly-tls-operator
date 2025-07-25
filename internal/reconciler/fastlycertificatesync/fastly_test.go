@@ -1943,3 +1943,768 @@ YEd6GuL9bCWqfXw1cHbBKg==
 		})
 	}
 }
+
+func TestLogic_createFastlyCertificate(t *testing.T) {
+	// Test certificate PEM data generated with OpenSSL
+	testCertPEM := `-----BEGIN CERTIFICATE-----
+MIIDCTCCAfGgAwIBAgIUF9ZX7/+b9LAOz6pC/skiX020488wDQYJKoZIhvcNAQEL
+BQAwEjEQMA4GA1UEAwwHVGVzdCBDQTAeFw0yNTA3MjUxODU1MTFaFw0yNjA3MjUx
+ODU1MTFaMCcxJTAjBgNVBAMMHHRlc3QtY2VydGlmaWNhdGUuZXhhbXBsZS5jb20w
+ggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCYp0K+SBuSoZ8JIkeAcAYY
+nQuNF8RTxAlj9SqPj6M0/H4b0BwS3vZAlIpxmQ7ZVE84iQafdOLR6eatulNVuV14
+9Ab7rT/aGWH6lH70x8RmoOXMVY040CXV76je+L6nm+ZN0Fv02zwL0NgRNfO3utLr
+xW9T29gka3Bvko/Z87NtUKk+M+CIWK7TYjvMulDRIUI8YEJZdNKfwR/5vemOjzMT
+hApgvkvglhXl9xJMJ/Eb4Sq30Lt0uRP11a4BUJl6b+jujykQEXyRMxq4zLncyhLk
+Z1Sxt5wmBXlHwO9Chcgk9XfjZIt8IeZLiEmjgAHljVvMz4HpgwsknVr/bK/LbsER
+AgMBAAGjQjBAMB0GA1UdDgQWBBQ8asgD+X8GoDfh1HaExrbjErroOjAfBgNVHSME
+GDAWgBQYfGMYbFe1HnqxOa/HoU/u3GqKWzANBgkqhkiG9w0BAQsFAAOCAQEATB9M
+eIlYV8lO2nZoyMPRf73njSdPYu0trD4aNQxSA3T0mt+dfszmy+kJpsAWKQ8sZodR
+jfNVzo6yJlcOUD7AJaspAsmUsaN1USghnVbO/BAuXomptBFlSLGkRRxjUKzqygOw
+0X4HDy0j/NDYW+Ifi8MOdAB6gNLUlRlmN6181Nrv1jzKbM9OGPHyElby1pRWP9CY
+8ihOYhTjoPht2UflMNbptCtPH6yNrj/sxZXhCdXZNPMY3wdPdQY7TBtjBiRUzvat
+/mjBLStI+NrwO6iYq6IAXWWo2MwPwgs54f3uYJ+OyU1qQX5vRp6QU5ei5KI7uuYc
+TC0Xee/Aqtvr7zx4QQ==
+-----END CERTIFICATE-----`
+
+	testCACertPEM := `-----BEGIN CERTIFICATE-----
+MIIDBTCCAe2gAwIBAgIUGcNQkfIBN+AM5f6Yp3L8fDppnU4wDQYJKoZIhvcNAQEL
+BQAwEjEQMA4GA1UEAwwHVGVzdCBDQTAeFw0yNTA3MjUxODU0MzdaFw0yNjA3MjUx
+ODU0MzdaMBIxEDAOBgNVBAMMB1Rlc3QgQ0EwggEiMA0GCSqGSIb3DQEBAQUAA4IB
+DwAwggEKAoIBAQC8m/rIYHQggrJs2NsJMDHsyKLw52T6MJH/QVRfjhIXuzkBl9N9
+BZ9+DCgd2feXYRnOBbYe10YgjrK+TxyMEbzMkfW1Nat/kyZRY/aSXHfYaptJXU4X
+qixyYkwir8qQaGrk527xIiXVf9PdVjeUeo5Beedic+AuOA+flocnLbvMz2K83k5j
+LHTODO0A+cKiL1WSDPSQ7R4twtLxOo3/WcBv7nFjn7hSuQm6RuXtiGLCA5/965Vu
+Kc8kcGudAfDHjk+U/9FHakRfEcjPANlVHQDPIX6lBosAxXEdKYVReOIb/FfhxblX
+8o8qimMEdv6QthWoChltcTn933MHTP4VZ2OHAgMBAAGjUzBRMB0GA1UdDgQWBBQY
+fGMYbFe1HnqxOa/HoU/u3GqKWzAfBgNVHSMEGDAWgBQYfGMYbFe1HnqxOa/HoU/u
+3GqKWzAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQCD9qcLBMam
+IdV3EIre1HiUhiw+QkWIS5iPBWoPHZ5KkvT4Jd1w7ykS/HtkdKqeoQCnuspbBVma
++3BgjcpnMI1UygKbjIw0waieeTuBwVVmhhjHQWyDjhejfLHYo88IJdmG7NbsShdj
+D/HPhxGyDFvaAlGSNSG3tXmiNCfEyAKpxO5a3h+grkoQeFIGnaDxvTesWct/kEXN
+W3D8yxXbf1pVSDu/n8psU4UehElQSUJ99OAE/r8ZAaz4FNk7uxUbMQXuutgcQpZ6
+5G6IEoBindfwE0kPTZjWjIfOwezPAsweqTyztP5kcHgTwEMLu6rUXA9fMSXR+0bg
+Obq/T4m2BUjO
+-----END CERTIFICATE-----`
+
+	testPrivateKeyPEM := `-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCYp0K+SBuSoZ8J
+IkeAcAYYnQuNF8RTxAlj9SqPj6M0/H4b0BwS3vZAlIpxmQ7ZVE84iQafdOLR6eat
+ulNVuV149Ab7rT/aGWH6lH70x8RmoOXMVY040CXV76je+L6nm+ZN0Fv02zwL0NgR
+NfO3utLrxW9T29gka3Bvko/Z87NtUKk+M+CIWK7TYjvMulDRIUI8YEJZdNKfwR/5
+vemOjzMThApgvkvglhXl9xJMJ/Eb4Sq30Lt0uRP11a4BUJl6b+jujykQEXyRMxq4
+zLncyhLkZ1Sxt5wmBXlHwO9Chcgk9XfjZIt8IeZLiEmjgAHljVvMz4HpgwsknVr/
+bK/LbsERAgMBAAECggEANKj+jUWyvVKj2jLJF7WNZNBIO9QHFh56XtEkbYHPe2fe
+2RlhleD0cjLLz4RNawt6iLY8YqWf2Wom+addOCVJ6X/FKO0LKeG3uwmfAjInvn+i
+xmp83Sxw4OxcBQ8qNgfB2vYVwtIeVLUm1EkYWjlIqaziSrt8RJQLpXGZzkYTj5HL
+bGJjSRhfH7CFXAMNgvw2dKCsZtdWlLYtcE3saG0far9hSsvyTaPid3x28E8/jW8Z
+oLpO2fPnyLKpLoc88quXyaM1rvRcDLCEanA2GNpM44l57eN5pK6npsjClYlMfoLV
+yxoBwbwF+K1xKoem9PVCvHVusu1HciE+LFe47BJwQQKBgQDF6M9F76MxDjkPhZkL
+n63n8U5+2SkOmT8uKyk9MBHrYa/QqXBljcIiB8LEkWBYGiDdKhFIBsPh7rhqlY/5
+L4DdWGvgwa+ERKTTf78YTtPPXufH8dNp0HFqrzckPT/rkzn25zHwYSW/TBEJZ/yU
+RCTW1aIkq23QFeBEWUpjyBws0wKBgQDFddkaYDtJUcGqO81HTIRGt4Mq3evFs2KT
+tC6HKAdteJdlQ5Ca2KVjtIvUMqW4NNuUk4A5xIcz4MSlyQ1+2CdFrzJT4Hofa8G4
+JuIkn1mp6OQhaSNXYfxGJ6lkfrTmFUXfZoyvcflY8u0VkO2UcLcP6Dp2sYltbkzw
+FgiCr09cCwKBgQCA7MGiGJMh0NchInHp3ZLHpy3wen1BkllTNTC/OIJj6RZEgyzC
+K0/NJWse7Glr21GPYekyF54hn4apgFbzCJwVFZXpK6OwMZuCYBTXu/pFe9jYKtQD
+eZN44T21sOTkDNvU2RVyN4cEkIQEsaYb3Cx3e2IOK1L1HFsli1lnmSOpmwKBgEd4
+bVlfpXXXUrq0JIv/BQ23lJFqe9E2KaL+n6yp725PLLUpbGivq8VX7xiiMFtpPmUb
+sli2ap17aJH9IJZd1HEjhZrYcDt5PEfUQxwwVTrroc76CCGzxKT77BMEzaNN5dmD
+e75xCWiJnQimSWfmGEx4qNiXT/+84bowr2nl3FqbAoGAWgLiK/ZjWBQA9j8EPkJc
+Q6XCVFB/FTkoCyYxLzL/pVKaw16xi+UehzHeC7GcPidu2trH9ikW6v1i5lxKl8Y+
+p/Xa4rAIUbRxNAL/KehpylhAZGZRL4iueGDGz/oLo3mj8G9nwUW5xcDVfU7TDHR7
+rI/pIULoTkGajE0uXlIlG0k=
+-----END PRIVATE KEY-----`
+
+	tests := []struct {
+		name                       string
+		setupObjects               []client.Object // K8s objects to create in fake client
+		fastlyAPIShouldNotBeCalled bool            // If true, fail test if API is called
+		fastlyAPIError             string          // If set, return this error from API
+		hackLocalReconciliation    bool            // Value for AllowUntrustedRoot
+		expectedError              string
+		expectFastlyClientCall     bool
+		expectedFastlyInput        *fastly.CreateCustomTLSCertificateInput
+	}{
+		{
+			name: "successful certificate creation - production mode",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte(testPrivateKeyPEM),
+						"tls.crt": []byte(testCertPEM),
+					},
+				},
+			},
+			hackLocalReconciliation: false,
+			expectFastlyClientCall:  true,
+			expectedFastlyInput: &fastly.CreateCustomTLSCertificateInput{
+				CertBlob:           testCertPEM,
+				Name:               "test-certificate",
+				AllowUntrustedRoot: false,
+			},
+		},
+		{
+			name: "successful certificate creation - local development mode with CA chain",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte(testPrivateKeyPEM),
+						"tls.crt": []byte(testCertPEM),
+						"ca.crt":  []byte(testCACertPEM), // Required for local reconciliation
+					},
+				},
+			},
+			hackLocalReconciliation: true,
+			expectFastlyClientCall:  true,
+			expectedFastlyInput: &fastly.CreateCustomTLSCertificateInput{
+				CertBlob:           testCertPEM + testCACertPEM, // Should be concatenated
+				Name:               "test-certificate",
+				AllowUntrustedRoot: true,
+			},
+		},
+		{
+			name:                       "certificate not found",
+			setupObjects:               []client.Object{}, // No objects - certificate missing
+			fastlyAPIShouldNotBeCalled: true,
+			expectedError:              "failed to get TLS secret from context",
+			expectFastlyClientCall:     false,
+		},
+		{
+			name: "secret not found",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret", // This secret doesn't exist
+					},
+				},
+				// No secret object
+			},
+			fastlyAPIShouldNotBeCalled: true,
+			expectedError:              "failed to get TLS secret from context",
+			expectFastlyClientCall:     false,
+		},
+		{
+			name: "secret missing tls.crt",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte(testPrivateKeyPEM),
+						// Note: tls.crt is missing
+					},
+				},
+			},
+			fastlyAPIShouldNotBeCalled: true,
+			expectedError:              "failed to get CertPEM for Fastly certificate",
+			expectFastlyClientCall:     false,
+		},
+		{
+			name: "fastly api error",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte(testPrivateKeyPEM),
+						"tls.crt": []byte(testCertPEM),
+					},
+				},
+			},
+			fastlyAPIError:         "fastly api connection failed",
+			expectedError:          "failed to create Fastly certificate: fastly api connection failed",
+			expectFastlyClientCall: true,
+		},
+	}
+
+	// Helper function to create mock Fastly client based on raw parameters
+	setupFastlyClient := func(t *testing.T, shouldNotBeCalled bool, apiError string) *MockFastlyClient {
+		return &MockFastlyClient{
+			CreateCustomTLSCertificateFunc: func(ctx context.Context, input *fastly.CreateCustomTLSCertificateInput) (*fastly.CustomTLSCertificate, error) {
+				if shouldNotBeCalled {
+					t.Error("CreateCustomTLSCertificate should not be called in this test case")
+					return nil, nil
+				}
+
+				if apiError != "" {
+					return nil, errors.New(apiError)
+				}
+
+				// Success case
+				return &fastly.CustomTLSCertificate{ID: "new-cert-123"}, nil
+			},
+		}
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup Fastly client mock with call tracking
+			var actualFastlyInput *fastly.CreateCustomTLSCertificateInput
+			mockFastlyClient := setupFastlyClient(t, tt.fastlyAPIShouldNotBeCalled, tt.fastlyAPIError)
+
+			// Wrap the original function to capture input
+			originalFunc := mockFastlyClient.CreateCustomTLSCertificateFunc
+			mockFastlyClient.CreateCustomTLSCertificateFunc = func(ctx context.Context, input *fastly.CreateCustomTLSCertificateInput) (*fastly.CustomTLSCertificate, error) {
+				actualFastlyInput = input
+				return originalFunc(ctx, input)
+			}
+
+			// Create fake k8s client with test objects
+			scheme := runtime.NewScheme()
+			_ = cmv1.AddToScheme(scheme)
+			_ = corev1.AddToScheme(scheme)
+
+			fakeClient := fake.NewClientBuilder().
+				WithScheme(scheme).
+				WithObjects(tt.setupObjects...).
+				Build()
+
+			// Create Logic instance
+			logic := &Logic{
+				FastlyClient: mockFastlyClient,
+			}
+
+			// Create test context with fake K8s client
+			ctx := createTestContext()
+			ctx.Client = &k8sutil.ContextClient{
+				SchemedClient: k8sutil.SchemedClient{
+					Client: fakeClient,
+				},
+				Context:   context.Background(),
+				Namespace: "test-namespace",
+			}
+			// Set the hack flag for testing AllowUntrustedRoot
+			ctx.Config.HackFastlyCertificateSyncLocalReconciliation = tt.hackLocalReconciliation
+
+			// Call the function
+			err := logic.createFastlyCertificate(ctx)
+
+			// Check error expectation
+			if tt.expectedError != "" {
+				if err == nil {
+					t.Errorf("createFastlyCertificate() expected error containing %q, but got nil", tt.expectedError)
+				} else if !strings.Contains(err.Error(), tt.expectedError) {
+					t.Errorf("createFastlyCertificate() error = %q, want error containing %q", err.Error(), tt.expectedError)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("createFastlyCertificate() unexpected error = %v", err)
+				}
+			}
+
+			// Check if Fastly client was called as expected
+			if tt.expectFastlyClientCall {
+				if actualFastlyInput == nil {
+					t.Error("createFastlyCertificate() expected Fastly CreateCustomTLSCertificate to be called, but it wasn't")
+				} else if tt.expectedFastlyInput != nil {
+					// Verify the input to CreateCustomTLSCertificate
+					if actualFastlyInput.CertBlob != tt.expectedFastlyInput.CertBlob {
+						t.Errorf("createFastlyCertificate() Fastly input CertBlob = %q, want %q", actualFastlyInput.CertBlob, tt.expectedFastlyInput.CertBlob)
+					}
+					if actualFastlyInput.Name != tt.expectedFastlyInput.Name {
+						t.Errorf("createFastlyCertificate() Fastly input Name = %q, want %q", actualFastlyInput.Name, tt.expectedFastlyInput.Name)
+					}
+					if actualFastlyInput.AllowUntrustedRoot != tt.expectedFastlyInput.AllowUntrustedRoot {
+						t.Errorf("createFastlyCertificate() Fastly input AllowUntrustedRoot = %v, want %v", actualFastlyInput.AllowUntrustedRoot, tt.expectedFastlyInput.AllowUntrustedRoot)
+					}
+				}
+			} else {
+				if actualFastlyInput != nil {
+					t.Error("createFastlyCertificate() expected Fastly CreateCustomTLSCertificate NOT to be called, but it was")
+				}
+			}
+		})
+	}
+}
+
+func TestLogic_updateFastlyCertificate(t *testing.T) {
+	// Reuse the same OpenSSL-generated certificates from createFastlyCertificate test
+	testCertPEM := `-----BEGIN CERTIFICATE-----
+MIIDCTCCAfGgAwIBAgIUF9ZX7/+b9LAOz6pC/skiX020488wDQYJKoZIhvcNAQEL
+BQAwEjEQMA4GA1UEAwwHVGVzdCBDQTAeFw0yNTA3MjUxODU1MTFaFw0yNjA3MjUx
+ODU1MTFaMCcxJTAjBgNVBAMMHHRlc3QtY2VydGlmaWNhdGUuZXhhbXBsZS5jb20w
+ggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCYp0K+SBuSoZ8JIkeAcAYY
+nQuNF8RTxAlj9SqPj6M0/H4b0BwS3vZAlIpxmQ7ZVE84iQafdOLR6eatulNVuV14
+9Ab7rT/aGWH6lH70x8RmoOXMVY040CXV76je+L6nm+ZN0Fv02zwL0NgRNfO3utLr
+xW9T29gka3Bvko/Z87NtUKk+M+CIWK7TYjvMulDRIUI8YEJZdNKfwR/5vemOjzMT
+hApgvkvglhXl9xJMJ/Eb4Sq30Lt0uRP11a4BUJl6b+jujykQEXyRMxq4zLncyhLk
+Z1Sxt5wmBXlHwO9Chcgk9XfjZIt8IeZLiEmjgAHljVvMz4HpgwsknVr/bK/LbsER
+AgMBAAGjQjBAMB0GA1UdDgQWBBQ8asgD+X8GoDfh1HaExrbjErroOjAfBgNVHSME
+GDAWgBQYfGMYbFe1HnqxOa/HoU/u3GqKWzANBgkqhkiG9w0BAQsFAAOCAQEATB9M
+eIlYV8lO2nZoyMPRf73njSdPYu0trD4aNQxSA3T0mt+dfszmy+kJpsAWKQ8sZodR
+jfNVzo6yJlcOUD7AJaspAsmUsaN1USghnVbO/BAuXomptBFlSLGkRRxjUKzqygOw
+0X4HDy0j/NDYW+Ifi8MOdAB6gNLUlRlmN6181Nrv1jzKbM9OGPHyElby1pRWP9CY
+8ihOYhTjoPht2UflMNbptCtPH6yNrj/sxZXhCdXZNPMY3wdPdQY7TBtjBiRUzvat
+/mjBLStI+NrwO6iYq6IAXWWo2MwPwgs54f3uYJ+OyU1qQX5vRp6QU5ei5KI7uuYc
+TC0Xee/Aqtvr7zx4QQ==
+-----END CERTIFICATE-----`
+
+	testCACertPEM := `-----BEGIN CERTIFICATE-----
+MIIDBTCCAe2gAwIBAgIUGcNQkfIBN+AM5f6Yp3L8fDppnU4wDQYJKoZIhvcNAQEL
+BQAwEjEQMA4GA1UEAwwHVGVzdCBDQTAeFw0yNTA3MjUxODU0MzdaFw0yNjA3MjUx
+ODU0MzdaMBIxEDAOBgNVBAMMB1Rlc3QgQ0EwggEiMA0GCSqGSIb3DQEBAQUAA4IB
+DwAwggEKAoIBAQC8m/rIYHQggrJs2NsJMDHsyKLw52T6MJH/QVRfjhIXuzkBl9N9
+BZ9+DCgd2feXYRnOBbYe10YgjrK+TxyMEbzMkfW1Nat/kyZRY/aSXHfYaptJXU4X
+qixyYkwir8qQaGrk527xIiXVf9PdVjeUeo5Beedic+AuOA+flocnLbvMz2K83k5j
+LHTODO0A+cKiL1WSDPSQ7R4twtLxOo3/WcBv7nFjn7hSuQm6RuXtiGLCA5/965Vu
+Kc8kcGudAfDHjk+U/9FHakRfEcjPANlVHQDPIX6lBosAxXEdKYVReOIb/FfhxblX
+8o8qimMEdv6QthWoChltcTn933MHTP4VZ2OHAgMBAAGjUzBRMB0GA1UdDgQWBBQY
+fGMYbFe1HnqxOa/HoU/u3GqKWzAfBgNVHSMEGDAWgBQYfGMYbFe1HnqxOa/HoU/u
+3GqKWzAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQCD9qcLBMam
+IdV3EIre1HiUhiw+QkWIS5iPBWoPHZ5KkvT4Jd1w7ykS/HtkdKqeoQCnuspbBVma
++3BgjcpnMI1UygKbjIw0waieeTuBwVVmhhjHQWyDjhejfLHYo88IJdmG7NbsShdj
+D/HPhxGyDFvaAlGSNSG3tXmiNCfEyAKpxO5a3h+grkoQeFIGnaDxvTesWct/kEXN
+W3D8yxXbf1pVSDu/n8psU4UehElQSUJ99OAE/r8ZAaz4FNk7uxUbMQXuutgcQpZ6
+5G6IEoBindfwE0kPTZjWjIfOwezPAsweqTyztP5kcHgTwEMLu6rUXA9fMSXR+0bg
+Obq/T4m2BUjO
+-----END CERTIFICATE-----`
+
+	testPrivateKeyPEM := `-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCYp0K+SBuSoZ8J
+IkeAcAYYnQuNF8RTxAlj9SqPj6M0/H4b0BwS3vZAlIpxmQ7ZVE84iQafdOLR6eat
+ulNVuV149Ab7rT/aGWH6lH70x8RmoOXMVY040CXV76je+L6nm+ZN0Fv02zwL0NgR
+NfO3utLrxW9T29gka3Bvko/Z87NtUKk+M+CIWK7TYjvMulDRIUI8YEJZdNKfwR/5
+vemOjzMThApgvkvglhXl9xJMJ/Eb4Sq30Lt0uRP11a4BUJl6b+jujykQEXyRMxq4
+zLncyhLkZ1Sxt5wmBXlHwO9Chcgk9XfjZIt8IeZLiEmjgAHljVvMz4HpgwsknVr/
+bK/LbsERAgMBAAECggEANKj+jUWyvVKj2jLJF7WNZNBIO9QHFh56XtEkbYHPe2fe
+2RlhleD0cjLLz4RNawt6iLY8YqWf2Wom+addOCVJ6X/FKO0LKeG3uwmfAjInvn+i
+xmp83Sxw4OxcBQ8qNgfB2vYVwtIeVLUm1EkYWjlIqaziSrt8RJQLpXGZzkYTj5HL
+bGJjSRhfH7CFXAMNgvw2dKCsZtdWlLYtcE3saG0far9hSsvyTaPid3x28E8/jW8Z
+oLpO2fPnyLKpLoc88quXyaM1rvRcDLCEanA2GNpM44l57eN5pK6npsjClYlMfoLV
+yxoBwbwF+K1xKoem9PVCvHVusu1HciE+LFe47BJwQQKBgQDF6M9F76MxDjkPhZkL
+n63n8U5+2SkOmT8uKyk9MBHrYa/QqXBljcIiB8LEkWBYGiDdKhFIBsPh7rhqlY/5
+L4DdWGvgwa+ERKTTf78YTtPPXufH8dNp0HFqrzckPT/rkzn25zHwYSW/TBEJZ/yU
+RCTW1aIkq23QFeBEWUpjyBws0wKBgQDFddkaYDtJUcGqO81HTIRGt4Mq3evFs2KT
+tC6HKAdteJdlQ5Ca2KVjtIvUMqW4NNuUk4A5xIcz4MSlyQ1+2CdFrzJT4Hofa8G4
+JuIkn1mp6OQhaSNXYfxGJ6lkfrTmFUXfZoyvcflY8u0VkO2UcLcP6Dp2sYltbkzw
+FgiCr09cCwKBgQCA7MGiGJMh0NchInHp3ZLHpy3wen1BkllTNTC/OIJj6RZEgyzC
+K0/NJWse7Glr21GPYekyF54hn4apgFbzCJwVFZXpK6OwMZuCYBTXu/pFe9jYKtQD
+eZN44T21sOTkDNvU2RVyN4cEkIQEsaYb3Cx3e2IOK1L1HFsli1lnmSOpmwKBgEd4
+bVlfpXXXUrq0JIv/BQ23lJFqe9E2KaL+n6yp725PLLUpbGivq8VX7xiiMFtpPmUb
+sli2ap17aJH9IJZd1HEjhZrYcDt5PEfUQxwwVTrroc76CCGzxKT77BMEzaNN5dmD
+e75xCWiJnQimSWfmGEx4qNiXT/+84bowr2nl3FqbAoGAWgLiK/ZjWBQA9j8EPkJc
+Q6XCVFB/FTkoCyYxLzL/pVKaw16xi+UehzHeC7GcPidu2trH9ikW6v1i5lxKl8Y+
+p/Xa4rAIUbRxNAL/KehpylhAZGZRL4iueGDGz/oLo3mj8G9nwUW5xcDVfU7TDHR7
+rI/pIULoTkGajE0uXlIlG0k=
+-----END PRIVATE KEY-----`
+
+	tests := []struct {
+		name                          string
+		setupObjects                  []client.Object              // K8s objects to create in fake client
+		mockExistingFastlyCertificate *fastly.CustomTLSCertificate // What getFastlyCertificateMatchingSubject returns
+		getFastlyCertificateError     string                       // Error from getFastlyCertificateMatchingSubject
+		fastlyAPIShouldNotBeCalled    bool                         // If true, fail test if UpdateCustomTLSCertificate is called
+		fastlyAPIError                string                       // If set, return this error from UpdateCustomTLSCertificate
+		hackLocalReconciliation       bool                         // Value for AllowUntrustedRoot
+		expectedError                 string
+		expectFastlyUpdateCall        bool
+		expectedFastlyUpdateInput     *fastly.UpdateCustomTLSCertificateInput
+	}{
+		{
+			name: "successful certificate update - production mode",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte(testPrivateKeyPEM),
+						"tls.crt": []byte(testCertPEM),
+					},
+				},
+			},
+			mockExistingFastlyCertificate: &fastly.CustomTLSCertificate{
+				ID:   "existing-cert-123",
+				Name: "test-certificate",
+			},
+			hackLocalReconciliation: false,
+			expectFastlyUpdateCall:  true,
+			expectedFastlyUpdateInput: &fastly.UpdateCustomTLSCertificateInput{
+				CertBlob:           testCertPEM,
+				Name:               "test-certificate",
+				ID:                 "existing-cert-123",
+				AllowUntrustedRoot: false,
+			},
+		},
+		{
+			name: "successful certificate update - local development mode with CA chain",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte(testPrivateKeyPEM),
+						"tls.crt": []byte(testCertPEM),
+						"ca.crt":  []byte(testCACertPEM), // Required for local reconciliation
+					},
+				},
+			},
+			mockExistingFastlyCertificate: &fastly.CustomTLSCertificate{
+				ID:   "existing-cert-456",
+				Name: "test-certificate",
+			},
+			hackLocalReconciliation: true,
+			expectFastlyUpdateCall:  true,
+			expectedFastlyUpdateInput: &fastly.UpdateCustomTLSCertificateInput{
+				CertBlob:           testCertPEM + testCACertPEM, // Should be concatenated
+				Name:               "test-certificate",
+				ID:                 "existing-cert-456",
+				AllowUntrustedRoot: true,
+			},
+		},
+		{
+			name:                       "certificate not found in kubernetes",
+			setupObjects:               []client.Object{}, // No objects - certificate missing
+			fastlyAPIShouldNotBeCalled: true,
+			expectedError:              "failed to get TLS secret from context",
+			expectFastlyUpdateCall:     false,
+		},
+		{
+			name: "secret not found in kubernetes",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret", // This secret doesn't exist
+					},
+				},
+				// No secret object
+			},
+			fastlyAPIShouldNotBeCalled: true,
+			expectedError:              "failed to get TLS secret from context",
+			expectFastlyUpdateCall:     false,
+		},
+		{
+			name: "secret missing tls.crt",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte(testPrivateKeyPEM),
+						// Note: tls.crt is missing
+					},
+				},
+			},
+			fastlyAPIShouldNotBeCalled: true,
+			expectedError:              "failed to get CertPEM for Fastly certificate",
+			expectFastlyUpdateCall:     false,
+		},
+		{
+			name: "local development mode missing ca.crt",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte(testPrivateKeyPEM),
+						"tls.crt": []byte(testCertPEM),
+						// Note: ca.crt is missing but required for local reconciliation
+					},
+				},
+			},
+			hackLocalReconciliation:    true,
+			fastlyAPIShouldNotBeCalled: true,
+			expectedError:              "failed to get CertPEM for Fastly certificate",
+			expectFastlyUpdateCall:     false,
+		},
+		{
+			name: "fastly certificate not found",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte(testPrivateKeyPEM),
+						"tls.crt": []byte(testCertPEM),
+					},
+				},
+			},
+			mockExistingFastlyCertificate: nil, // Certificate not found in Fastly
+			fastlyAPIShouldNotBeCalled:    true,
+			expectedError:                 "fastly certificate not found",
+			expectFastlyUpdateCall:        false,
+		},
+		{
+			name: "error getting fastly certificate",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte(testPrivateKeyPEM),
+						"tls.crt": []byte(testCertPEM),
+					},
+				},
+			},
+			getFastlyCertificateError:  "fastly list certificates failed",
+			fastlyAPIShouldNotBeCalled: true,
+			expectedError:              "failed to get Fastly certificate matching subject",
+			expectFastlyUpdateCall:     false,
+		},
+		{
+			name: "fastly api update error",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte(testPrivateKeyPEM),
+						"tls.crt": []byte(testCertPEM),
+					},
+				},
+			},
+			mockExistingFastlyCertificate: &fastly.CustomTLSCertificate{
+				ID:   "existing-cert-789",
+				Name: "test-certificate",
+			},
+			fastlyAPIError:         "fastly update api connection failed",
+			expectedError:          "failed to update Fastly certificate: fastly update api connection failed",
+			expectFastlyUpdateCall: true,
+		},
+	}
+
+	// Helper function to create logic with mocked Fastly API calls
+	createLogicWithMocks := func(t *testing.T, mockCert *fastly.CustomTLSCertificate, getCertError string, shouldNotCallUpdate bool, updateError string) (*Logic, **fastly.UpdateCustomTLSCertificateInput) {
+		var actualUpdateInput *fastly.UpdateCustomTLSCertificateInput
+
+		mockFastlyClient := &MockFastlyClient{
+			// Mock ListCustomTLSCertificates to control what getFastlyCertificateMatchingSubject finds
+			ListCustomTLSCertificatesFunc: func(ctx context.Context, input *fastly.ListCustomTLSCertificatesInput) ([]*fastly.CustomTLSCertificate, error) {
+				if getCertError != "" {
+					return nil, errors.New(getCertError)
+				}
+
+				// Return the mock certificate if it exists, otherwise empty list
+				// Only return on first page to simulate simple case
+				if input.PageNumber == 1 && mockCert != nil {
+					return []*fastly.CustomTLSCertificate{mockCert}, nil
+				}
+				return []*fastly.CustomTLSCertificate{}, nil
+			},
+			UpdateCustomTLSCertificateFunc: func(ctx context.Context, input *fastly.UpdateCustomTLSCertificateInput) (*fastly.CustomTLSCertificate, error) {
+				if shouldNotCallUpdate {
+					t.Error("UpdateCustomTLSCertificate should not be called in this test case")
+					return nil, nil
+				}
+
+				actualUpdateInput = input
+
+				if updateError != "" {
+					return nil, errors.New(updateError)
+				}
+
+				// Success case
+				return &fastly.CustomTLSCertificate{ID: input.ID}, nil
+			},
+		}
+
+		logic := &Logic{
+			FastlyClient: mockFastlyClient,
+		}
+
+		return logic, &actualUpdateInput
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create logic with mocked methods
+			logic, actualUpdateInputPtr := createLogicWithMocks(t, tt.mockExistingFastlyCertificate, tt.getFastlyCertificateError, tt.fastlyAPIShouldNotBeCalled, tt.fastlyAPIError)
+
+			// Create fake k8s client with test objects
+			scheme := runtime.NewScheme()
+			_ = cmv1.AddToScheme(scheme)
+			_ = corev1.AddToScheme(scheme)
+
+			fakeClient := fake.NewClientBuilder().
+				WithScheme(scheme).
+				WithObjects(tt.setupObjects...).
+				Build()
+
+			// Create test context with fake K8s client
+			ctx := createTestContext()
+			ctx.Client = &k8sutil.ContextClient{
+				SchemedClient: k8sutil.SchemedClient{
+					Client: fakeClient,
+				},
+				Context:   context.Background(),
+				Namespace: "test-namespace",
+			}
+			// Set the hack flag for testing AllowUntrustedRoot
+			ctx.Config.HackFastlyCertificateSyncLocalReconciliation = tt.hackLocalReconciliation
+
+			// Call the function
+			err := logic.updateFastlyCertificate(ctx)
+
+			// Check error expectation
+			if tt.expectedError != "" {
+				if err == nil {
+					t.Errorf("updateFastlyCertificate() expected error containing %q, but got nil", tt.expectedError)
+				} else if !strings.Contains(err.Error(), tt.expectedError) {
+					t.Errorf("updateFastlyCertificate() error = %q, want error containing %q", err.Error(), tt.expectedError)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("updateFastlyCertificate() unexpected error = %v", err)
+				}
+			}
+
+			// Check if Fastly client was called as expected
+			actualUpdateInput := *actualUpdateInputPtr
+			if tt.expectFastlyUpdateCall {
+				if actualUpdateInput == nil {
+					t.Error("updateFastlyCertificate() expected Fastly UpdateCustomTLSCertificate to be called, but it wasn't")
+				} else if tt.expectedFastlyUpdateInput != nil {
+					// Verify the input to UpdateCustomTLSCertificate
+					if actualUpdateInput.CertBlob != tt.expectedFastlyUpdateInput.CertBlob {
+						t.Errorf("updateFastlyCertificate() Fastly input CertBlob = %q, want %q", actualUpdateInput.CertBlob, tt.expectedFastlyUpdateInput.CertBlob)
+					}
+					if actualUpdateInput.Name != tt.expectedFastlyUpdateInput.Name {
+						t.Errorf("updateFastlyCertificate() Fastly input Name = %q, want %q", actualUpdateInput.Name, tt.expectedFastlyUpdateInput.Name)
+					}
+					if actualUpdateInput.ID != tt.expectedFastlyUpdateInput.ID {
+						t.Errorf("updateFastlyCertificate() Fastly input ID = %q, want %q", actualUpdateInput.ID, tt.expectedFastlyUpdateInput.ID)
+					}
+					if actualUpdateInput.AllowUntrustedRoot != tt.expectedFastlyUpdateInput.AllowUntrustedRoot {
+						t.Errorf("updateFastlyCertificate() Fastly input AllowUntrustedRoot = %v, want %v", actualUpdateInput.AllowUntrustedRoot, tt.expectedFastlyUpdateInput.AllowUntrustedRoot)
+					}
+				}
+			} else {
+				if actualUpdateInput != nil {
+					t.Error("updateFastlyCertificate() expected Fastly UpdateCustomTLSCertificate NOT to be called, but it was")
+				}
+			}
+		})
+	}
+}
