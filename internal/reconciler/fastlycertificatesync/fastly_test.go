@@ -1292,3 +1292,300 @@ func TestLogic_createFastlyPrivateKey(t *testing.T) {
 		})
 	}
 }
+
+func TestLogic_getFastlyCertificateStatus(t *testing.T) {
+	// Valid test certificate with serial number 46069880556468363886837689903758279604279389965
+	testCertPEM := []byte(`-----BEGIN CERTIFICATE-----
+MIIDCTCCAfGgAwIBAgIUCBHYStfMkkndTFGA8Ii8cwjbLw0wDQYJKoZIhvcNAQEL
+BQAwFDESMBAGA1UEAwwJdGVzdC1jZXJ0MB4XDTI1MDcyNTE2MDczMVoXDTI2MDcy
+NTE2MDczMVowFDESMBAGA1UEAwwJdGVzdC1jZXJ0MIIBIjANBgkqhkiG9w0BAQEF
+AAOCAQ8AMIIBCgKCAQEA0LU+3xmSv1m/8HQCDbX2vh8IFt81ihXqRPsCVaUFKooe
+wQ51qfcf8QTrrFO9zTa4/jE5XCnc6mcaFyus5mGB5KaicTJFqWEnSMZ6EaTeriyw
+igKmX21Fl7QmxHmEUPZ2SBgg3+3KZ6x6ZuBbZBEBqBmWwCgKLKYvL9VX2qPyxFbO
+FQ/jTXEtycTL0CjvKrcVzSBudHfkK+p3YonfuhjyECon6RQYj8/JcKumywvOi4xS
+Ly2632ylNXk3lnUR81VZMzpqACav/hZ8xfHCJSLGyvq+ie+g7UTmeRDay+WpXSaL
++pONsYmTlDkusINgN9gQHjvIpHtVYgMSO4nILVGgywIDAQABo1MwUTAdBgNVHQ4E
+FgQUMsHrc5vZ2ZM+2hrlYKejCv+rzegwHwYDVR0jBBgwFoAUMsHrc5vZ2ZM+2hrl
+YKejCv+rzegwDwYDVR0TAQH/BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAQEAfzvb
+D7WypfPJdolfjWqJ1uTMt+3ZwsekHdYnrb6V45wHF0CZz3yjVRQ5X58GwlziuRPJ
+7fJbs1IrhbyrfvFYAtti7AbEkMmir4IvXD7ptmsq4BM5R6T5b4sNVCs1wB+6Zt64
+6naCo/pA/uFaYvXnKc1ehcXjqBcAbcrUw30QZQyxw+P3Bj1PrAJdJl+ziChS1Rwv
+29Ufb2qfN/isbgNb6JHoErzKosMtPqXZK10QQXYEnoL9xmXPVSxufGGtdE18Q0c+
+0vadtjmK1NtoNKvuWDjpKcZRsRUm/dzgDL/0Jq6EiKrz/fAAvwnFgyNzOfjJvkDh
+uDRcMus2gDK/pMedtQ==
+-----END CERTIFICATE-----`)
+
+	tests := []struct {
+		name                   string
+		setupObjects           []client.Object
+		mockFastlyCertificates []*fastly.CustomTLSCertificate
+		fastlyAPIError         error
+		expectedStatus         CertificateStatus
+		expectedError          string
+	}{
+		{
+			name: "certificate missing in fastly",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+			},
+			mockFastlyCertificates: []*fastly.CustomTLSCertificate{}, // No certificates
+			expectedStatus:         CertificateStatusMissing,
+		},
+		{
+			name: "certificate exists and is stale",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte("-----BEGIN RSA PRIVATE KEY-----\ntest-key-data\n-----END RSA PRIVATE KEY-----"),
+						"tls.crt": testCertPEM,
+					},
+				},
+			},
+			mockFastlyCertificates: []*fastly.CustomTLSCertificate{
+				{
+					ID:           "cert-123",
+					Name:         "test-certificate",
+					SerialNumber: "different-serial-number", // Different from certificate serial
+				},
+			},
+			expectedStatus: CertificateStatusStale,
+		},
+		{
+			name: "certificate exists and is not stale",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte("-----BEGIN RSA PRIVATE KEY-----\ntest-key-data\n-----END RSA PRIVATE KEY-----"),
+						"tls.crt": testCertPEM,
+					},
+				},
+			},
+			mockFastlyCertificates: []*fastly.CustomTLSCertificate{
+				{
+					ID:           "cert-123",
+					Name:         "test-certificate",
+					SerialNumber: "46069880556468363886837689903758279604279389965", // Matching serial from testCertPEM
+				},
+			},
+			expectedStatus: CertificateStatusSynced,
+		},
+		{
+			name: "certificate exists but name doesn't match",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+			},
+			mockFastlyCertificates: []*fastly.CustomTLSCertificate{
+				{
+					ID:           "cert-123",
+					Name:         "different-certificate", // Different name
+					SerialNumber: "some-serial",
+				},
+			},
+			expectedStatus: CertificateStatusMissing, // Should be treated as missing
+		},
+		{
+			name: "multiple certificates, match found",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte("-----BEGIN RSA PRIVATE KEY-----\ntest-key-data\n-----END RSA PRIVATE KEY-----"),
+						"tls.crt": testCertPEM,
+					},
+				},
+			},
+			mockFastlyCertificates: []*fastly.CustomTLSCertificate{
+				{
+					ID:           "cert-111",
+					Name:         "other-certificate",
+					SerialNumber: "other-serial",
+				},
+				{
+					ID:           "cert-123",
+					Name:         "test-certificate",                                // This matches
+					SerialNumber: "46069880556468363886837689903758279604279389965", // Matching serial from testCertPEM
+				},
+				{
+					ID:           "cert-456",
+					Name:         "another-certificate",
+					SerialNumber: "another-serial",
+				},
+			},
+			expectedStatus: CertificateStatusSynced,
+		},
+		{
+			name:          "error getting certificate from k8s",
+			setupObjects:  []client.Object{}, // No certificate object
+			expectedError: "failed to get Fastly certificate matching subject",
+		},
+		{
+			name: "error from fastly api",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+			},
+			fastlyAPIError: errors.New("fastly api error"),
+			expectedError:  "failed to get Fastly certificate matching subject",
+		},
+		{
+			name: "error from isFastlyCertificateStale due to invalid cert PEM",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte("-----BEGIN RSA PRIVATE KEY-----\ntest-key-data\n-----END RSA PRIVATE KEY-----"),
+						"tls.crt": []byte("invalid-cert-data"), // Invalid PEM data
+					},
+				},
+			},
+			mockFastlyCertificates: []*fastly.CustomTLSCertificate{
+				{
+					ID:           "cert-123",
+					Name:         "test-certificate",
+					SerialNumber: "some-serial",
+				},
+			},
+			expectedError: "failed to check if certificate is stale",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create mock Fastly client
+			mockFastlyClient := &MockFastlyClient{
+				ListCustomTLSCertificatesFunc: func(ctx context.Context, input *fastly.ListCustomTLSCertificatesInput) ([]*fastly.CustomTLSCertificate, error) {
+					if tt.fastlyAPIError != nil {
+						return nil, tt.fastlyAPIError
+					}
+
+					// Simple single page response for testing
+					if input.PageNumber == 1 {
+						return tt.mockFastlyCertificates, nil
+					}
+					return []*fastly.CustomTLSCertificate{}, nil // Empty subsequent pages
+				},
+			}
+
+			// Create fake k8s client with test objects
+			scheme := runtime.NewScheme()
+			_ = cmv1.AddToScheme(scheme)
+			_ = corev1.AddToScheme(scheme)
+
+			fakeClient := fake.NewClientBuilder().
+				WithScheme(scheme).
+				WithObjects(tt.setupObjects...).
+				Build()
+
+			// Create Logic instance
+			logic := &Logic{
+				FastlyClient: mockFastlyClient,
+			}
+
+			// Create test context with fake K8s client
+			ctx := createTestContext()
+			ctx.Client = &k8sutil.ContextClient{
+				SchemedClient: k8sutil.SchemedClient{
+					Client: fakeClient,
+				},
+				Context:   context.Background(),
+				Namespace: "test-namespace",
+			}
+
+			// Call the function under test
+			result, err := logic.getFastlyCertificateStatus(ctx)
+
+			// Check error expectation
+			if tt.expectedError != "" {
+				if err == nil {
+					t.Errorf("getFastlyCertificateStatus() expected error containing %q, but got nil", tt.expectedError)
+				} else if !strings.Contains(err.Error(), tt.expectedError) {
+					t.Errorf("getFastlyCertificateStatus() error = %q, want error containing %q", err.Error(), tt.expectedError)
+				}
+				return // Don't check result if we expected an error
+			}
+
+			if err != nil {
+				t.Errorf("getFastlyCertificateStatus() unexpected error = %v", err)
+				return
+			}
+
+			// Check result
+			if result != tt.expectedStatus {
+				t.Errorf("getFastlyCertificateStatus() = %v, want %v", result, tt.expectedStatus)
+			}
+		})
+	}
+}
