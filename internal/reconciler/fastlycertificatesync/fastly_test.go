@@ -2708,3 +2708,305 @@ rI/pIULoTkGajE0uXlIlG0k=
 		})
 	}
 }
+
+// Helper function to generate a full page of certificates
+func generateCertPage(pageNum int, count int) []*fastly.CustomTLSCertificate {
+	certs := make([]*fastly.CustomTLSCertificate, count)
+	for i := 0; i < count; i++ {
+		certs[i] = &fastly.CustomTLSCertificate{
+			ID:   fmt.Sprintf("cert%d%d", pageNum, i),
+			Name: fmt.Sprintf("certificate-%d%d", pageNum, i),
+		}
+	}
+	return certs
+}
+
+// Helper function to generate a full page with a specific certificate at the end
+func generateCertPageWithMatch(pageNum int, matchID, matchName string) []*fastly.CustomTLSCertificate {
+	certs := make([]*fastly.CustomTLSCertificate, defaultFastlyPageSize)
+	for i := 0; i < defaultFastlyPageSize-1; i++ {
+		certs[i] = &fastly.CustomTLSCertificate{
+			ID:   fmt.Sprintf("cert%d%d", pageNum, i),
+			Name: fmt.Sprintf("certificate-%d%d", pageNum, i),
+		}
+	}
+	// Last certificate matches
+	certs[defaultFastlyPageSize-1] = &fastly.CustomTLSCertificate{ID: matchID, Name: matchName}
+	return certs
+}
+
+func TestLogic_getFastlyCertificateMatchingSubject(t *testing.T) {
+	tests := []struct {
+		name                   string
+		setupObjects           []client.Object
+		mockFastlyCertificates [][]*fastly.CustomTLSCertificate // Support for pagination testing
+		fastlyAPIError         error
+		expectedCertificate    *fastly.CustomTLSCertificate // What should be returned
+		expectedError          string
+		expectedPageRequests   int // Number of page requests expected
+	}{
+		{
+			name: "certificate found in fastly - single page",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+				},
+			},
+			mockFastlyCertificates: [][]*fastly.CustomTLSCertificate{
+				// Page 1
+				{
+					{ID: "cert1", Name: "other-certificate"},
+					{ID: "cert2", Name: "test-certificate"}, // This matches
+					{ID: "cert3", Name: "another-certificate"},
+				},
+			},
+			expectedCertificate:  &fastly.CustomTLSCertificate{ID: "cert2", Name: "test-certificate"},
+			expectedPageRequests: 1,
+		},
+		{
+			name: "certificate found in fastly - multiple pages",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+				},
+			},
+			mockFastlyCertificates: [][]*fastly.CustomTLSCertificate{
+				// Page 1 - full page (20 certificates)
+				generateCertPage(1, defaultFastlyPageSize),
+				// Page 2 - partial page with matching certificate
+				{
+					{ID: "cert21", Name: "some-other-certificate"},
+					{ID: "cert22", Name: "test-certificate"}, // This matches
+					{ID: "cert23", Name: "final-certificate"},
+				},
+			},
+			expectedCertificate:  &fastly.CustomTLSCertificate{ID: "cert22", Name: "test-certificate"},
+			expectedPageRequests: 2,
+		},
+		{
+			name: "certificate not found in fastly",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+				},
+			},
+			mockFastlyCertificates: [][]*fastly.CustomTLSCertificate{
+				// Page 1
+				{
+					{ID: "cert1", Name: "other-certificate"},
+					{ID: "cert2", Name: "different-certificate"},
+					{ID: "cert3", Name: "another-certificate"},
+				},
+			},
+			expectedCertificate:  nil, // Not found
+			expectedPageRequests: 1,
+		},
+		{
+			name: "no certificates in fastly",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+				},
+			},
+			mockFastlyCertificates: [][]*fastly.CustomTLSCertificate{
+				// Page 1 - empty
+				{},
+			},
+			expectedCertificate:  nil, // Not found
+			expectedPageRequests: 1,
+		},
+		{
+			name: "certificate found on first page even with multiple pages",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+				},
+			},
+			mockFastlyCertificates: [][]*fastly.CustomTLSCertificate{
+				// Page 1 - full page with match at the end
+				generateCertPageWithMatch(1, "matching-cert", "test-certificate"),
+				// Page 2 - shouldn't be requested because we find match on page 1
+				{
+					{ID: "cert21", Name: "should-not-be-reached"},
+				},
+			},
+			expectedCertificate:  &fastly.CustomTLSCertificate{ID: "matching-cert", Name: "test-certificate"},
+			expectedPageRequests: 2, // Will request page 2 since page 1 was full, even though match is on page 1
+		},
+		{
+			name: "multiple matching certificates - returns first found",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+				},
+			},
+			mockFastlyCertificates: [][]*fastly.CustomTLSCertificate{
+				// Page 1
+				{
+					{ID: "cert1", Name: "other-certificate"},
+					{ID: "cert2", Name: "test-certificate"}, // First match
+					{ID: "cert3", Name: "test-certificate"}, // Second match (should not be returned)
+				},
+			},
+			expectedCertificate:  &fastly.CustomTLSCertificate{ID: "cert2", Name: "test-certificate"}, // Returns first found
+			expectedPageRequests: 1,
+		},
+		{
+			name:          "kubernetes certificate not found",
+			setupObjects:  []client.Object{}, // No certificate object
+			expectedError: "failed to get certificate of name",
+		},
+		{
+			name: "fastly api error",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+				},
+			},
+			fastlyAPIError:       errors.New("fastly connection failed"),
+			expectedError:        "failed to list Fastly certificates",
+			expectedPageRequests: 1,
+		},
+		{
+			name: "certificate found after pagination through empty pages",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+				},
+			},
+			mockFastlyCertificates: [][]*fastly.CustomTLSCertificate{
+				// Page 1 - full page but no matches
+				generateCertPage(1, defaultFastlyPageSize),
+				// Page 2 - full page but no matches
+				generateCertPage(2, defaultFastlyPageSize),
+				// Page 3 - partial page with match
+				{
+					{ID: "final-cert", Name: "test-certificate"}, // This matches
+				},
+			},
+			expectedCertificate:  &fastly.CustomTLSCertificate{ID: "final-cert", Name: "test-certificate"},
+			expectedPageRequests: 3,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Track API calls
+			var actualPageRequests int
+
+			// Create mock Fastly client
+			mockFastlyClient := &MockFastlyClient{
+				ListCustomTLSCertificatesFunc: func(ctx context.Context, input *fastly.ListCustomTLSCertificatesInput) ([]*fastly.CustomTLSCertificate, error) {
+					actualPageRequests++
+
+					if tt.fastlyAPIError != nil {
+						return nil, tt.fastlyAPIError
+					}
+
+					// Handle pagination testing with mockFastlyCertificates
+					if len(tt.mockFastlyCertificates) > 0 {
+						pageIndex := input.PageNumber - 1 // Convert to 0-based index
+						if pageIndex < len(tt.mockFastlyCertificates) {
+							return tt.mockFastlyCertificates[pageIndex], nil
+						}
+						return []*fastly.CustomTLSCertificate{}, nil // Empty page for out-of-range requests
+					}
+
+					// Default empty response
+					return []*fastly.CustomTLSCertificate{}, nil
+				},
+			}
+
+			// Create fake k8s client with test objects
+			scheme := runtime.NewScheme()
+			_ = cmv1.AddToScheme(scheme)
+
+			fakeClient := fake.NewClientBuilder().
+				WithScheme(scheme).
+				WithObjects(tt.setupObjects...).
+				Build()
+
+			// Create Logic instance
+			logic := &Logic{
+				FastlyClient: mockFastlyClient,
+			}
+
+			// Create test context with fake K8s client
+			ctx := createTestContext()
+			ctx.Client = &k8sutil.ContextClient{
+				SchemedClient: k8sutil.SchemedClient{
+					Client: fakeClient,
+				},
+				Context:   context.Background(),
+				Namespace: "test-namespace",
+			}
+
+			// Call the actual function
+			result, err := logic.getFastlyCertificateMatchingSubject(ctx)
+
+			// Check error expectation
+			if tt.expectedError != "" {
+				if err == nil {
+					t.Errorf("getFastlyCertificateMatchingSubject() expected error containing %q, but got nil", tt.expectedError)
+				} else if !strings.Contains(err.Error(), tt.expectedError) {
+					t.Errorf("getFastlyCertificateMatchingSubject() error = %q, want error containing %q", err.Error(), tt.expectedError)
+				}
+				return // Don't check result if we expected an error
+			}
+
+			if err != nil {
+				t.Errorf("getFastlyCertificateMatchingSubject() unexpected error = %v", err)
+				return
+			}
+
+			// Check result
+			if tt.expectedCertificate == nil {
+				if result != nil {
+					t.Errorf("getFastlyCertificateMatchingSubject() = %v, want nil", result)
+				}
+			} else {
+				if result == nil {
+					t.Errorf("getFastlyCertificateMatchingSubject() = nil, want certificate with ID %s", tt.expectedCertificate.ID)
+				} else {
+					if result.ID != tt.expectedCertificate.ID {
+						t.Errorf("getFastlyCertificateMatchingSubject() certificate ID = %s, want %s", result.ID, tt.expectedCertificate.ID)
+					}
+					if result.Name != tt.expectedCertificate.Name {
+						t.Errorf("getFastlyCertificateMatchingSubject() certificate Name = %s, want %s", result.Name, tt.expectedCertificate.Name)
+					}
+				}
+			}
+
+			// Check API call expectations
+			if tt.expectedPageRequests > 0 {
+				if actualPageRequests != tt.expectedPageRequests {
+					t.Errorf("getFastlyCertificateMatchingSubject() made %d page requests, want %d", actualPageRequests, tt.expectedPageRequests)
+				}
+			}
+		})
+	}
+}
