@@ -1589,3 +1589,357 @@ uDRcMus2gDK/pMedtQ==
 		})
 	}
 }
+
+func TestLogic_isFastlyCertificateStale(t *testing.T) {
+	// Test certificates generated with OpenSSL
+	testCert1PEM := `-----BEGIN CERTIFICATE-----
+MIIDGTCCAgGgAwIBAgIUMjmrsWIuKwx7IY91T+uJbt9W/JwwDQYJKoZIhvcNAQEL
+BQAwHDEaMBgGA1UEAwwRdGVzdDEuZXhhbXBsZS5jb20wHhcNMjUwNzI1MTgwMDE1
+WhcNMjYwNzI1MTgwMDE1WjAcMRowGAYDVQQDDBF0ZXN0MS5leGFtcGxlLmNvbTCC
+ASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAMH46nyVilIPr60Y5a6eRq0f
+AToieLr1TOc5PNdXRTsksKKkwi3FN78+Kaq2InI81qZT+3EXL+tQZxajH7wT2XCW
+WoC5vACneZgEqEw7DShN0i981Q1frph0VWnfeuMFyeF1k6NRFttunxpuMw/hUVD1
+vw7bAQVvPs1v5b7z9i4eagNDPxN+NRc/Ha+izG2lR+KIWppddw2SxNPqDqE8Pp/X
+ghx+tXV6YBKAUKHKswCNo/ei+PfTP5zaBDujh5bpW7zEcEbO1MqhaK0udRoDN/ga
+1tLic3qgwQkWuM5GaR0gD5akwxQn7xTq3QJnS4eZlXUvOuREaAvr61Hzsd5oXNUC
+AwEAAaNTMFEwHQYDVR0OBBYEFKBcc0a/E7HxgA0EKYxFpvhVIEywMB8GA1UdIwQY
+MBaAFKBcc0a/E7HxgA0EKYxFpvhVIEywMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZI
+hvcNAQELBQADggEBAGu6NdXiEeEYOS85Z4SHnz/tJ0k/1sVLlv6DGBTdntr6BEHZ
+bRs90sI5Xp/z+mGV16wAT6svezAZxSbrToVyydxMiXQhzbujR0068IrrQVSj3mi8
+UNMYzx88f/jClo2WuYP7A74GYR36RVBbxD08O8A+jTArZwiv0iN81+NTmeg4ZQBy
+XSDMDmZZx+ojBtchD2hX/cxaajUHf4udNqNgB/rHYaHFt3GZ8rnZvuahVIMQBBMz
+mS5eN9puVa/irPcDL4wouoE3YalPzD0f4kJptJXb4t8ztIe03UIeKQ8sJMqBDykx
+69hz1v4rzQFhf0TH/DK8wScx7zpirNuXS5dV2ck=
+-----END CERTIFICATE-----`
+
+	testCert2PEM := `-----BEGIN CERTIFICATE-----
+MIIDGTCCAgGgAwIBAgIUPeH3t55Pw/sWqlpNyLINBAkB9VYwDQYJKoZIhvcNAQEL
+BQAwHDEaMBgGA1UEAwwRdGVzdDIuZXhhbXBsZS5jb20wHhcNMjUwNzI1MTgwMDMy
+WhcNMjYwNzI1MTgwMDMyWjAcMRowGAYDVQQDDBF0ZXN0Mi5leGFtcGxlLmNvbTCC
+ASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALPjE7067AzjlvV2MRSszo+L
+HeF5/UGaPdqBsyx9gTSWNeCJkbR1pQkjdZ5y4qFCIDLE27yWMjSb/+Ffvi1cuRea
+HBjcBMVdZwzGtIaZEOmnYnPfk7kQUvBwNYHd32ako7L2TdQmsTN0NSlkxkT4aYfT
+TepnsK4QDYv068w9a3oS6CPbBxBpa+3z6DBNY0Im9SKbems3uSWyVH3PAfFbf6ct
+vXhLmKCyWg0urwnY57Py294pfDEsudQ3LC5m/JOwq7Wjzpc25MLK1Iiv7ujcqOrv
+pCvzt2eimX3tWZFSAFPykRPTabXzhkpqlLaNQYznFn52eQB3JrPhKsK2bhRLHUsC
+AwEAAaNTMFEwHQYDVR0OBBYEFDtob+IoH7z5+8JwcZ6ZOHie1/7DMB8GA1UdIwQY
+MBaAFDtob+IoH7z5+8JwcZ6ZOHie1/7DMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZI
+hvcNAQELBQADggEBAAZfy3HfudwGxkolP5KZAW7RNF6O56+4+Rgrbayms+iPpeof
+tvfO1uC960ZexE2nUOUZ/gnZhPmyX9DMQVOiWeK982iz+qMacvC1XdcTlXERl4Q9
+Q07o/baloPsxGxAdRM/3n6gi+lIBxK8YkD1R/B/J2fpIIfLKn49ejdffXHBEH3Jr
+KkK+pApnwKCyKNGkbvG+iArNmowO5XzYbKsdMP9t/RKbLmqOndkLlyEuDlnRDR46
+zY2hMuGsVROLFABoev8oxubZXekjgvJ305zqfQHZ1ae+6bxQD5cOa2NNttsmBkFH
+ij7fULsnBQV7F7D++VuXZtfHz/P5xsHC20wjuY8=
+-----END CERTIFICATE-----`
+
+	// Serial numbers extracted from the test certificates using OpenSSL
+	testCert1SerialDecimal := "286735637578885560113881828566553888840545139868"
+	testCert2SerialDecimal := "353287683906654082246724919568538276704972567894"
+
+	testPrivateKeyPEM := `-----BEGIN PRIVATE KEY-----
+MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDB+Op8lYpSD6+t
+GOWunkatHwE6Ini69UznOTzXV0U7JLCipMItxTe/PimqtiJyPNamU/txFy/rUGcW
+ox+8E9lwllqAubwAp3mYBKhMOw0oTdIvfNUNX66YdFVp33rjBcnhdZOjURbbbp8a
+bjMP4VFQ9b8O2wEFbz7Nb+W+8/YuHmoDQz8TfjUXPx2vosxtpUfiiFqaXXcNksTT
+6g6hPD6f14IcfrV1emASgFChyrMAjaP3ovj30z+c2gQ7o4eW6Vu8xHBGztTKoWit
+LnUaAzf4GtbS4nN6oMEJFrjORmkdIA+WpMMUJ+8U6t0CZ0uHmZV1LzrkRGgL6+tR
+87HeaFzVAgMBAAECggEACoU4HpKzwlikdBR2HJ7sAWa9l8wX1TgJuD7D/H/4usj2
+JZQfDgF00RQLiX1AaAbBs5q5d/xEdpRRSwqE5ZwD/pXBCdtJBZYPw7147U2EnKt/
+22B/Y67NVup0WX4r+ZUuSmKoo8J5pWQeD/5rGZDkaqoxdxpMt2E9vEG16cHsl7qp
+NawklW7iRj2mf+RDCalRXPAMV+fWAEJBcXFnsTjYkcH1Na4lmN8nhvG3Una/+W5O
+eRF670cd+RMPaU7SZMcqX+7iKZAlk/iKZSRfN80WFFF8+rc0eyHSrhelm6dQEDI6
+auYIXVHi+G6KBYpF41WU0jwscOL3oSGP7XTxsEAiHwKBgQD74vmu99cRwr+OrdRe
+TushBAvSlctmnd/Sskz4WkEUS3ZsIAFPJbb8W6GDQkE90gzQF2yC20lzBjWDnxr+
+QtVO731bOElCgrJSttjIPXQ691Xr/6mrqfpCRNV+lYFvhGDdURuZAC0NK6/x4XbK
+Wzoa4qD96o8rV6/35INqWo5I4wKBgQDFI9O3raR+iUJlKNvwcsAgupcWQ26sI8Ud
+3rd5HhH5oryOLhY+vAd+NgrlalXANwR9WeVv5iiNYDphQXINHtByarvbqNdgplht
+PS851Ljp0PEwYhAcPF9aAXxFQWG2wps2p+Jzscv5w2HZcRP69CmYeX4XvGyjb3nZ
+WrjnB0SI5wKBgFP6lrhJFUFspqURO469zRLS4IYzPv9Vf3wlyhe7L5tulWrzOLyE
+nH+CpVS30DymPXNbe+gc6F4bIdhiQYOoEKoimq7BE1vDa2S8ZYZNRuUp9VGbiZwc
+Lb3OaUes3NyrTAg9tG/MaTjM6fpA63QH+lVgXcCKZXVT5O1HGLFqw6l1AoGAI3Gw
+lBqlM5bsGBIDkTSgdIH3vin7kPmRbDBp3l3Yr4Bh1FJW74qQ8lE3Hk5DAp8hsIPk
+K30/F0QQ2wGQRumeYqPsCK9PofHmfiV9AzHK2UcWxjMrYFg+cIlJ1Y3OyrQsgeQn
+Y9O4r7xAMH8TL5CMlfxp/kyDX9MgHkMgcXEuEksCgYAp44cvIJ32ZXnkhqOGqKqx
+ROnKgP+IERYFaGuZZjbLszYGZim/XEltYcprTKFCMbM8t2ACnosaLsiryqEPVPae
+Yv2WDpgiXITjqQ7QNOSl31sWtvreWlbD7WIuKF6IhyYcGeK5GWMVrzDgtVI8Mvri
+YEd6GuL9bCWqfXw1cHbBKg==
+-----END PRIVATE KEY-----`
+
+	tests := []struct {
+		name              string
+		setupObjects      []client.Object
+		fastlyCertificate *fastly.CustomTLSCertificate
+		expectedStale     bool
+		expectedError     string
+	}{
+		{
+			name: "certificate is not stale - serial numbers match",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+						DNSNames:   []string{"test1.example.com"},
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte(testPrivateKeyPEM),
+						"tls.crt": []byte(testCert1PEM),
+					},
+				},
+			},
+			fastlyCertificate: &fastly.CustomTLSCertificate{
+				ID:           "cert-123",
+				Name:         "test-certificate",
+				SerialNumber: testCert1SerialDecimal, // Matches the certificate in the secret
+			},
+			expectedStale: false,
+		},
+		{
+			name: "certificate is stale - serial numbers differ",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+						DNSNames:   []string{"test1.example.com"},
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte(testPrivateKeyPEM),
+						"tls.crt": []byte(testCert1PEM), // Has testCert1SerialDecimal
+					},
+				},
+			},
+			fastlyCertificate: &fastly.CustomTLSCertificate{
+				ID:           "cert-123",
+				Name:         "test-certificate",
+				SerialNumber: testCert2SerialDecimal, // Different serial number
+			},
+			expectedStale: true,
+		},
+		{
+			name: "certificate with different local certificate - stale",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+						DNSNames:   []string{"test2.example.com"},
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte(testPrivateKeyPEM),
+						"tls.crt": []byte(testCert2PEM), // Has testCert2SerialDecimal
+					},
+				},
+			},
+			fastlyCertificate: &fastly.CustomTLSCertificate{
+				ID:           "cert-456",
+				Name:         "test-certificate",
+				SerialNumber: testCert1SerialDecimal, // Different from testCert2SerialDecimal
+			},
+			expectedStale: true,
+		},
+		{
+			name: "certificate with same local certificate - not stale",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+						DNSNames:   []string{"test2.example.com"},
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte(testPrivateKeyPEM),
+						"tls.crt": []byte(testCert2PEM), // Has testCert2SerialDecimal
+					},
+				},
+			},
+			fastlyCertificate: &fastly.CustomTLSCertificate{
+				ID:           "cert-456",
+				Name:         "test-certificate",
+				SerialNumber: testCert2SerialDecimal, // Matches testCert2SerialDecimal
+			},
+			expectedStale: false,
+		},
+		{
+			name:          "error getting certificate from context",
+			setupObjects:  []client.Object{}, // No objects - will cause getCertificateAndTLSSecretFromSubject to fail
+			expectedError: "failed to get TLS secret from context",
+		},
+		{
+			name: "error getting cert PEM from secret",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte(testPrivateKeyPEM),
+						// Missing tls.crt - will cause getCertPEMForSecret to fail
+					},
+				},
+			},
+			fastlyCertificate: &fastly.CustomTLSCertificate{
+				ID:           "cert-123",
+				Name:         "test-certificate",
+				SerialNumber: testCert1SerialDecimal,
+			},
+			expectedError: "failed to get cert PEM for secret",
+		},
+		{
+			name: "invalid PEM data",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte(testPrivateKeyPEM),
+						"tls.crt": []byte("invalid-pem-data"), // Invalid PEM
+					},
+				},
+			},
+			fastlyCertificate: &fastly.CustomTLSCertificate{
+				ID:           "cert-123",
+				Name:         "test-certificate",
+				SerialNumber: testCert1SerialDecimal,
+			},
+			expectedError: "failed to decode PEM block",
+		},
+		{
+			name: "unparseable certificate",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte(testPrivateKeyPEM),
+						"tls.crt": []byte("-----BEGIN CERTIFICATE-----\nVGhpcyBpcyBub3QgYSB2YWxpZCBjZXJ0aWZpY2F0ZSBidXQgaXMgdmFsaWQgYmFzZTY0Cg==\n-----END CERTIFICATE-----"), // Valid PEM encoding but invalid cert data
+					},
+				},
+			},
+			fastlyCertificate: &fastly.CustomTLSCertificate{
+				ID:           "cert-123",
+				Name:         "test-certificate",
+				SerialNumber: testCert1SerialDecimal,
+			},
+			expectedError: "failed to parse certificate",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create fake k8s client with test objects
+			scheme := runtime.NewScheme()
+			_ = cmv1.AddToScheme(scheme)
+			_ = corev1.AddToScheme(scheme)
+
+			fakeClient := fake.NewClientBuilder().
+				WithScheme(scheme).
+				WithObjects(tt.setupObjects...).
+				Build()
+
+			// Create Logic instance
+			logic := &Logic{}
+
+			// Create test context with fake K8s client
+			ctx := createTestContext()
+			ctx.Client = &k8sutil.ContextClient{
+				SchemedClient: k8sutil.SchemedClient{
+					Client: fakeClient,
+				},
+				Context:   context.Background(),
+				Namespace: "test-namespace",
+			}
+
+			// Call the function under test
+			result, err := logic.isFastlyCertificateStale(ctx, tt.fastlyCertificate)
+
+			// Check error expectation
+			if tt.expectedError != "" {
+				if err == nil {
+					t.Errorf("isFastlyCertificateStale() expected error containing %q, but got nil", tt.expectedError)
+				} else if !strings.Contains(err.Error(), tt.expectedError) {
+					t.Errorf("isFastlyCertificateStale() error = %q, want error containing %q", err.Error(), tt.expectedError)
+				}
+				return // Don't check result if we expected an error
+			}
+
+			if err != nil {
+				t.Errorf("isFastlyCertificateStale() unexpected error = %v", err)
+				return
+			}
+
+			// Check result
+			if result != tt.expectedStale {
+				t.Errorf("isFastlyCertificateStale() = %v, want %v", result, tt.expectedStale)
+			}
+		})
+	}
+}
