@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -714,7 +715,6 @@ func TestLogic_createMissingFastlyTLSActivations(t *testing.T) {
 }
 
 func TestLogic_getFastlyPrivateKeyExists(t *testing.T) {
-
 	testPrivateKeyPEM := `-----BEGIN RSA PRIVATE KEY-----
 MIICWwIBAAKBgQDSIX1v14YXhBhoXs4xMDFaqcw0BzFGN9BUetq4xCX0RQjOgwut
 EVAQg+zqSwRzW0eQsNuWQBX0qFlNQSxtE5/Bt0mr9Vh5VTePHAj+kLqAWYwzpRK/
@@ -734,157 +734,345 @@ nqCTMVzmHe6A84rU57AR8Cd3ns2wJCdVBVXqipCW+g==
 	expectedSHA1 := "1ccf8849ae82aaab5749d5c791a221354f182a73"
 
 	tests := []struct {
-		name           string
-		mockKeys       []*fastly.PrivateKey
-		secretHasKey   bool
-		secretKey      string
-		apiError       error
-		expectedExists bool
-		expectedError  string
+		name                 string
+		setupObjects         []client.Object // K8s objects to create in fake client
+		mockKeys             []*fastly.PrivateKey
+		mockKeyPages         [][]*fastly.PrivateKey // Support for pagination testing
+		fastlyAPIError       error
+		expectedExists       bool
+		expectedError        string
+		expectFastlyAPICall  bool
+		expectedPageRequests int // Number of page requests expected
 	}{
 		{
-			name: "key exists in fastly",
+			name: "key exists in fastly - single page",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte(testPrivateKeyPEM),
+						"tls.crt": []byte("test-cert-data"),
+					},
+				},
+			},
 			mockKeys: []*fastly.PrivateKey{
 				{ID: "key1", PublicKeySHA1: "different_sha1"},
-				{ID: "key2", PublicKeySHA1: expectedSHA1},
+				{ID: "key2", PublicKeySHA1: expectedSHA1}, // This matches
 				{ID: "key3", PublicKeySHA1: "another_sha1"},
 			},
-			secretHasKey:   true,
-			secretKey:      testPrivateKeyPEM,
-			expectedExists: true,
+			expectedExists:       true,
+			expectFastlyAPICall:  true,
+			expectedPageRequests: 1,
 		},
 		{
 			name: "key does not exist in fastly",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte(testPrivateKeyPEM),
+						"tls.crt": []byte("test-cert-data"),
+					},
+				},
+			},
 			mockKeys: []*fastly.PrivateKey{
 				{ID: "key1", PublicKeySHA1: "different_sha1"},
 				{ID: "key2", PublicKeySHA1: "another_sha1"},
 			},
-			secretHasKey:   true,
-			secretKey:      testPrivateKeyPEM,
-			expectedExists: false,
+			expectedExists:       false,
+			expectFastlyAPICall:  true,
+			expectedPageRequests: 1,
 		},
 		{
-			name:           "no keys in fastly",
-			mockKeys:       []*fastly.PrivateKey{},
-			secretHasKey:   true,
-			secretKey:      testPrivateKeyPEM,
-			expectedExists: false,
+			name: "key exists in fastly - multiple pages",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte(testPrivateKeyPEM),
+						"tls.crt": []byte("test-cert-data"),
+					},
+				},
+			},
+			// Use mockKeyPages to simulate pagination
+			mockKeyPages: [][]*fastly.PrivateKey{
+				// Page 1 - full page (20 keys)
+				func() []*fastly.PrivateKey {
+					keys := make([]*fastly.PrivateKey, defaultFastlyPageSize)
+					for i := 0; i < defaultFastlyPageSize; i++ {
+						keys[i] = &fastly.PrivateKey{ID: fmt.Sprintf("key%d", i), PublicKeySHA1: fmt.Sprintf("sha1_%d", i)}
+					}
+					return keys
+				}(),
+				// Page 2 - partial page with matching key
+				{
+					{ID: "key21", PublicKeySHA1: expectedSHA1}, // This matches
+					{ID: "key22", PublicKeySHA1: "another_sha1"},
+				},
+			},
+			expectedExists:       true,
+			expectFastlyAPICall:  true,
+			expectedPageRequests: 2,
 		},
 		{
-			name:          "secret missing tls.key",
-			secretHasKey:  false,
-			expectedError: "does not contain tls.key",
+			name: "no keys in fastly",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte(testPrivateKeyPEM),
+						"tls.crt": []byte("test-cert-data"),
+					},
+				},
+			},
+			mockKeys:             []*fastly.PrivateKey{},
+			expectedExists:       false,
+			expectFastlyAPICall:  true,
+			expectedPageRequests: 1,
 		},
 		{
-			name:          "invalid private key PEM",
-			secretHasKey:  true,
-			secretKey:     "invalid-pem-data",
-			expectedError: "failed to get public key SHA1",
+			name:                "certificate not found",
+			setupObjects:        []client.Object{}, // No objects - certificate missing
+			expectedError:       "failed to get TLS secret from context",
+			expectFastlyAPICall: false,
 		},
 		{
-			name:          "fastly api error",
-			secretHasKey:  true,
-			secretKey:     testPrivateKeyPEM,
-			apiError:      errors.New("fastly connection failed"),
-			expectedError: "failed to list Fastly private keys",
+			name: "secret not found",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret", // This secret doesn't exist
+					},
+				},
+				// No secret object
+			},
+			expectedError:       "failed to get TLS secret from context",
+			expectFastlyAPICall: false,
+		},
+		{
+			name: "secret missing tls.key",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.crt": []byte("test-cert-data"),
+						// Note: tls.key is missing
+					},
+				},
+			},
+			expectedError:       "secret test-namespace/test-secret does not contain tls.key",
+			expectFastlyAPICall: false,
+		},
+		{
+			name: "invalid private key PEM",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte("invalid-pem-data"),
+						"tls.crt": []byte("test-cert-data"),
+					},
+				},
+			},
+			expectedError:       "failed to get public key SHA1",
+			expectFastlyAPICall: false,
+		},
+		{
+			name: "fastly api error",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte(testPrivateKeyPEM),
+						"tls.crt": []byte("test-cert-data"),
+					},
+				},
+			},
+			fastlyAPIError:       errors.New("fastly connection failed"),
+			expectedError:        "failed to list Fastly private keys",
+			expectFastlyAPICall:  true,
+			expectedPageRequests: 1,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create mock Fastly client with pagination support
-			pageIndex := 0
+			// Track API calls
+			var actualPageRequests int
+
+			// Create mock Fastly client
 			mockFastlyClient := &MockFastlyClient{
 				ListPrivateKeysFunc: func(ctx context.Context, input *fastly.ListPrivateKeysInput) ([]*fastly.PrivateKey, error) {
-					if tt.apiError != nil {
-						return nil, tt.apiError
+					actualPageRequests++
+
+					if tt.fastlyAPIError != nil {
+						return nil, tt.fastlyAPIError
 					}
 
-					// Simple pagination: return all keys on first page for this test
-					if pageIndex == 0 {
-						pageIndex++
+					// Handle pagination testing with mockKeyPages
+					if len(tt.mockKeyPages) > 0 {
+						pageIndex := input.PageNumber - 1 // Convert to 0-based index
+						if pageIndex < len(tt.mockKeyPages) {
+							return tt.mockKeyPages[pageIndex], nil
+						}
+						return []*fastly.PrivateKey{}, nil // Empty page for out-of-range requests
+					}
+
+					// Single page response for simple cases
+					if input.PageNumber == 1 {
 						return tt.mockKeys, nil
 					}
-					// Subsequent pages return empty
-					return []*fastly.PrivateKey{}, nil
+					return []*fastly.PrivateKey{}, nil // Empty subsequent pages
 				},
 			}
 
-			// Test the core logic components of getFastlyPrivateKeyExists:
+			// Create fake k8s client with test objects
+			scheme := runtime.NewScheme()
+			_ = cmv1.AddToScheme(scheme)
+			_ = corev1.AddToScheme(scheme)
 
-			// 1. Test secret data availability
-			secretData := make(map[string][]byte)
-			if tt.secretHasKey {
-				secretData["tls.key"] = []byte(tt.secretKey)
+			fakeClient := fake.NewClientBuilder().
+				WithScheme(scheme).
+				WithObjects(tt.setupObjects...).
+				Build()
+
+			// Create Logic instance
+			logic := &Logic{
+				FastlyClient: mockFastlyClient,
 			}
-			secretData["tls.crt"] = []byte("dummy-cert")
 
-			keyPEM, ok := secretData["tls.key"]
-			if !tt.secretHasKey {
-				if ok {
-					t.Error("Expected no tls.key in secret, but found one")
+			// Create test context with fake K8s client
+			ctx := createTestContext()
+			ctx.Client = &k8sutil.ContextClient{
+				SchemedClient: k8sutil.SchemedClient{
+					Client: fakeClient,
+				},
+				Context:   context.Background(),
+				Namespace: "test-namespace",
+			}
+
+			// Call the actual function
+			result, err := logic.getFastlyPrivateKeyExists(ctx)
+
+			// Check error expectation
+			if tt.expectedError != "" {
+				if err == nil {
+					t.Errorf("getFastlyPrivateKeyExists() expected error containing %q, but got nil", tt.expectedError)
+				} else if !strings.Contains(err.Error(), tt.expectedError) {
+					t.Errorf("getFastlyPrivateKeyExists() error = %q, want error containing %q", err.Error(), tt.expectedError)
 				}
-				if tt.expectedError == "" {
-					t.Error("Expected an error for missing tls.key but got none")
-				}
-				return
+				return // Don't check result if we expected an error
 			}
 
-			if !ok {
-				t.Error("Expected tls.key in secret but it was missing")
-				return
-			}
-
-			// 2. Test the SHA1 calculation
-			publicKeySHA1, err := getPublicKeySHA1FromPEM(keyPEM)
 			if err != nil {
-				if tt.expectedError != "" && strings.Contains(tt.expectedError, "SHA1") {
-					return // Expected error
-				}
-				t.Fatalf("Unexpected error calculating SHA1: %v", err)
+				t.Errorf("getFastlyPrivateKeyExists() unexpected error = %v", err)
+				return
 			}
 
-			// 3. Test the Fastly API pagination logic
-			var allPrivateKeys []*fastly.PrivateKey
-			pageNumber := 1
-
-			for {
-				privateKeys, err := mockFastlyClient.ListPrivateKeys(context.Background(), &fastly.ListPrivateKeysInput{
-					PageNumber: pageNumber,
-					PageSize:   defaultFastlyPageSize,
-				})
-				if err != nil {
-					if tt.expectedError != "" && strings.Contains(tt.expectedError, "list Fastly private keys") {
-						return // Expected error
-					}
-					t.Fatalf("Unexpected Fastly API error: %v", err)
-				}
-
-				allPrivateKeys = append(allPrivateKeys, privateKeys...)
-
-				if len(privateKeys) < defaultFastlyPageSize {
-					break
-				}
-				pageNumber++
+			// Check result
+			if result != tt.expectedExists {
+				t.Errorf("getFastlyPrivateKeyExists() = %v, want %v", result, tt.expectedExists)
 			}
 
-			// 4. Test the key matching logic
-			keyExistsInFastly := false
-			for _, key := range allPrivateKeys {
-				if key.PublicKeySHA1 == publicKeySHA1 {
-					keyExistsInFastly = true
-					break
+			// Check API call expectations
+			if tt.expectFastlyAPICall {
+				if actualPageRequests == 0 {
+					t.Error("getFastlyPrivateKeyExists() expected Fastly API to be called, but it wasn't")
+				} else if tt.expectedPageRequests > 0 && actualPageRequests != tt.expectedPageRequests {
+					t.Errorf("getFastlyPrivateKeyExists() made %d page requests, want %d", actualPageRequests, tt.expectedPageRequests)
 				}
-			}
-
-			// Verify the result matches expected behavior
-			if keyExistsInFastly != tt.expectedExists {
-				t.Errorf("Expected key exists = %v, got %v", tt.expectedExists, keyExistsInFastly)
-			}
-
-			// Verify we got the expected SHA1
-			if publicKeySHA1 != expectedSHA1 {
-				t.Errorf("Expected SHA1 = %s, got %s", expectedSHA1, publicKeySHA1)
+			} else {
+				if actualPageRequests > 0 {
+					t.Errorf("getFastlyPrivateKeyExists() expected Fastly API NOT to be called, but it was called %d times", actualPageRequests)
+				}
 			}
 		})
 	}
