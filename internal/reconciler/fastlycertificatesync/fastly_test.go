@@ -3407,3 +3407,394 @@ func TestLogic_getFastlyTLSActivationState(t *testing.T) {
 		})
 	}
 }
+
+func TestLogic_getFastlyDomainAndConfigurationToActivationMap(t *testing.T) {
+	tests := []struct {
+		name                 string
+		inputCertificate     *fastly.CustomTLSCertificate
+		mockActivationPages  [][]*fastly.TLSActivation // Support for pagination testing
+		fastlyAPIError       error
+		expectedMap          map[string]map[string]*fastly.TLSActivation
+		expectedError        string
+		expectedPageRequests int // Number of page requests expected
+	}{
+		{
+			name: "single page with multiple activations",
+			inputCertificate: &fastly.CustomTLSCertificate{
+				ID:   "cert-123",
+				Name: "test-certificate",
+				Domains: []*fastly.TLSDomain{
+					{ID: "domain1"},
+					{ID: "domain2"},
+				},
+			},
+			mockActivationPages: [][]*fastly.TLSActivation{
+				// Page 1 only
+				{
+					{
+						ID:            "activation1",
+						Domain:        &fastly.TLSDomain{ID: "domain1"},
+						Configuration: &fastly.TLSConfiguration{ID: "config1"},
+					},
+					{
+						ID:            "activation2",
+						Domain:        &fastly.TLSDomain{ID: "domain1"},
+						Configuration: &fastly.TLSConfiguration{ID: "config2"},
+					},
+					{
+						ID:            "activation3",
+						Domain:        &fastly.TLSDomain{ID: "domain2"},
+						Configuration: &fastly.TLSConfiguration{ID: "config1"},
+					},
+				},
+			},
+			expectedMap: map[string]map[string]*fastly.TLSActivation{
+				"domain1": {
+					"config1": {ID: "activation1", Domain: &fastly.TLSDomain{ID: "domain1"}, Configuration: &fastly.TLSConfiguration{ID: "config1"}},
+					"config2": {ID: "activation2", Domain: &fastly.TLSDomain{ID: "domain1"}, Configuration: &fastly.TLSConfiguration{ID: "config2"}},
+				},
+				"domain2": {
+					"config1": {ID: "activation3", Domain: &fastly.TLSDomain{ID: "domain2"}, Configuration: &fastly.TLSConfiguration{ID: "config1"}},
+				},
+			},
+			expectedPageRequests: 1,
+		},
+		{
+			name: "multiple pages of activations",
+			inputCertificate: &fastly.CustomTLSCertificate{
+				ID:   "cert-456",
+				Name: "multi-page-certificate",
+				Domains: []*fastly.TLSDomain{
+					{ID: "domain1"},
+				},
+			},
+			mockActivationPages: [][]*fastly.TLSActivation{
+				// Page 1 - full page (20 activations)
+				func() []*fastly.TLSActivation {
+					activations := make([]*fastly.TLSActivation, defaultFastlyPageSize)
+					for i := 0; i < defaultFastlyPageSize; i++ {
+						activations[i] = &fastly.TLSActivation{
+							ID:            fmt.Sprintf("activation1_%d", i),
+							Domain:        &fastly.TLSDomain{ID: "domain1"},
+							Configuration: &fastly.TLSConfiguration{ID: fmt.Sprintf("config1_%d", i)},
+						}
+					}
+					return activations
+				}(),
+				// Page 2 - partial page
+				{
+					{
+						ID:            "activation2_0",
+						Domain:        &fastly.TLSDomain{ID: "domain1"},
+						Configuration: &fastly.TLSConfiguration{ID: "config2_0"},
+					},
+					{
+						ID:            "activation2_1",
+						Domain:        &fastly.TLSDomain{ID: "domain1"},
+						Configuration: &fastly.TLSConfiguration{ID: "config2_1"},
+					},
+				},
+			},
+			expectedMap: func() map[string]map[string]*fastly.TLSActivation {
+				expectedMap := map[string]map[string]*fastly.TLSActivation{
+					"domain1": make(map[string]*fastly.TLSActivation),
+				}
+				// Add page 1 activations
+				for i := 0; i < defaultFastlyPageSize; i++ {
+					configID := fmt.Sprintf("config1_%d", i)
+					expectedMap["domain1"][configID] = &fastly.TLSActivation{
+						ID:            fmt.Sprintf("activation1_%d", i),
+						Domain:        &fastly.TLSDomain{ID: "domain1"},
+						Configuration: &fastly.TLSConfiguration{ID: configID},
+					}
+				}
+				// Add page 2 activations
+				expectedMap["domain1"]["config2_0"] = &fastly.TLSActivation{
+					ID:            "activation2_0",
+					Domain:        &fastly.TLSDomain{ID: "domain1"},
+					Configuration: &fastly.TLSConfiguration{ID: "config2_0"},
+				}
+				expectedMap["domain1"]["config2_1"] = &fastly.TLSActivation{
+					ID:            "activation2_1",
+					Domain:        &fastly.TLSDomain{ID: "domain1"},
+					Configuration: &fastly.TLSConfiguration{ID: "config2_1"},
+				}
+				return expectedMap
+			}(),
+			expectedPageRequests: 2,
+		},
+		{
+			name: "no activations found",
+			inputCertificate: &fastly.CustomTLSCertificate{
+				ID:   "cert-789",
+				Name: "empty-certificate",
+				Domains: []*fastly.TLSDomain{
+					{ID: "domain1"},
+				},
+			},
+			mockActivationPages: [][]*fastly.TLSActivation{
+				// Page 1 - empty
+				{},
+			},
+			expectedMap:          map[string]map[string]*fastly.TLSActivation{},
+			expectedPageRequests: 1,
+		},
+		{
+			name: "single activation",
+			inputCertificate: &fastly.CustomTLSCertificate{
+				ID:   "cert-single",
+				Name: "single-activation-certificate",
+				Domains: []*fastly.TLSDomain{
+					{ID: "domain1"},
+				},
+			},
+			mockActivationPages: [][]*fastly.TLSActivation{
+				// Page 1 - single activation
+				{
+					{
+						ID:            "only-activation",
+						Domain:        &fastly.TLSDomain{ID: "domain1"},
+						Configuration: &fastly.TLSConfiguration{ID: "only-config"},
+					},
+				},
+			},
+			expectedMap: map[string]map[string]*fastly.TLSActivation{
+				"domain1": {
+					"only-config": {
+						ID:            "only-activation",
+						Domain:        &fastly.TLSDomain{ID: "domain1"},
+						Configuration: &fastly.TLSConfiguration{ID: "only-config"},
+					},
+				},
+			},
+			expectedPageRequests: 1,
+		},
+		{
+			name: "same domain multiple configurations",
+			inputCertificate: &fastly.CustomTLSCertificate{
+				ID:   "cert-same-domain",
+				Name: "same-domain-certificate",
+				Domains: []*fastly.TLSDomain{
+					{ID: "domain1"},
+				},
+			},
+			mockActivationPages: [][]*fastly.TLSActivation{
+				{
+					{
+						ID:            "activation1",
+						Domain:        &fastly.TLSDomain{ID: "domain1"},
+						Configuration: &fastly.TLSConfiguration{ID: "config1"},
+					},
+					{
+						ID:            "activation2",
+						Domain:        &fastly.TLSDomain{ID: "domain1"},
+						Configuration: &fastly.TLSConfiguration{ID: "config2"},
+					},
+					{
+						ID:            "activation3",
+						Domain:        &fastly.TLSDomain{ID: "domain1"},
+						Configuration: &fastly.TLSConfiguration{ID: "config3"},
+					},
+				},
+			},
+			expectedMap: map[string]map[string]*fastly.TLSActivation{
+				"domain1": {
+					"config1": {ID: "activation1", Domain: &fastly.TLSDomain{ID: "domain1"}, Configuration: &fastly.TLSConfiguration{ID: "config1"}},
+					"config2": {ID: "activation2", Domain: &fastly.TLSDomain{ID: "domain1"}, Configuration: &fastly.TLSConfiguration{ID: "config2"}},
+					"config3": {ID: "activation3", Domain: &fastly.TLSDomain{ID: "domain1"}, Configuration: &fastly.TLSConfiguration{ID: "config3"}},
+				},
+			},
+			expectedPageRequests: 1,
+		},
+		{
+			name: "duplicate domain+config combination - last one wins",
+			inputCertificate: &fastly.CustomTLSCertificate{
+				ID:   "cert-duplicate",
+				Name: "duplicate-certificate",
+				Domains: []*fastly.TLSDomain{
+					{ID: "domain1"},
+				},
+			},
+			mockActivationPages: [][]*fastly.TLSActivation{
+				{
+					{
+						ID:            "activation1", // This should be overwritten
+						Domain:        &fastly.TLSDomain{ID: "domain1"},
+						Configuration: &fastly.TLSConfiguration{ID: "config1"},
+					},
+					{
+						ID:            "activation2", // This should be the final value
+						Domain:        &fastly.TLSDomain{ID: "domain1"},
+						Configuration: &fastly.TLSConfiguration{ID: "config1"}, // Same domain+config as above
+					},
+				},
+			},
+			expectedMap: map[string]map[string]*fastly.TLSActivation{
+				"domain1": {
+					"config1": {ID: "activation2", Domain: &fastly.TLSDomain{ID: "domain1"}, Configuration: &fastly.TLSConfiguration{ID: "config1"}}, // Second one wins
+				},
+			},
+			expectedPageRequests: 1,
+		},
+		{
+			name: "fastly api error on first page",
+			inputCertificate: &fastly.CustomTLSCertificate{
+				ID:   "cert-error",
+				Name: "error-certificate",
+			},
+			fastlyAPIError:       errors.New("fastly api connection failed"),
+			expectedError:        "failed to list Fastly TLS activations",
+			expectedPageRequests: 1,
+		},
+		{
+			name: "fastly api error on second page",
+			inputCertificate: &fastly.CustomTLSCertificate{
+				ID:   "cert-second-page-error",
+				Name: "second-page-error-certificate",
+			},
+			mockActivationPages: [][]*fastly.TLSActivation{
+				// Page 1 - full page, successful
+				func() []*fastly.TLSActivation {
+					activations := make([]*fastly.TLSActivation, defaultFastlyPageSize)
+					for i := 0; i < defaultFastlyPageSize; i++ {
+						activations[i] = &fastly.TLSActivation{
+							ID:            fmt.Sprintf("activation_%d", i),
+							Domain:        &fastly.TLSDomain{ID: "domain1"},
+							Configuration: &fastly.TLSConfiguration{ID: fmt.Sprintf("config_%d", i)},
+						}
+					}
+					return activations
+				}(),
+				// Page 2 - this will return an error
+			},
+			fastlyAPIError:       errors.New("second page api error"),
+			expectedError:        "failed to list Fastly TLS activations",
+			expectedPageRequests: 2, // Should try to get page 2 before failing
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Track API calls
+			var actualPageRequests int
+
+			// Create mock Fastly client
+			mockFastlyClient := &MockFastlyClient{
+				ListTLSActivationsFunc: func(ctx context.Context, input *fastly.ListTLSActivationsInput) ([]*fastly.TLSActivation, error) {
+					actualPageRequests++
+
+					// Verify the correct filter is set
+					if input.FilterTLSCertificateID != tt.inputCertificate.ID {
+						t.Errorf("Expected FilterTLSCertificateID = %q, got %q", tt.inputCertificate.ID, input.FilterTLSCertificateID)
+					}
+
+					// Handle error cases
+					if tt.fastlyAPIError != nil {
+						// If we're testing a second-page error, only return error on page 2
+						if strings.Contains(tt.name, "second page error") && input.PageNumber == 2 {
+							return nil, tt.fastlyAPIError
+						} else if !strings.Contains(tt.name, "second page error") {
+							return nil, tt.fastlyAPIError
+						}
+					}
+
+					// Handle pagination testing with mockActivationPages
+					if len(tt.mockActivationPages) > 0 {
+						pageIndex := input.PageNumber - 1 // Convert to 0-based index
+						if pageIndex < len(tt.mockActivationPages) {
+							return tt.mockActivationPages[pageIndex], nil
+						}
+						return []*fastly.TLSActivation{}, nil // Empty page for out-of-range requests
+					}
+
+					// Default empty response
+					return []*fastly.TLSActivation{}, nil
+				},
+			}
+
+			// Create Logic instance
+			logic := &Logic{
+				FastlyClient: mockFastlyClient,
+			}
+
+			// Create test context
+			ctx := createTestContext()
+
+			// Call the function under test
+			result, err := logic.getFastlyDomainAndConfigurationToActivationMap(ctx, tt.inputCertificate)
+
+			// Check error expectation
+			if tt.expectedError != "" {
+				if err == nil {
+					t.Errorf("getFastlyDomainAndConfigurationToActivationMap() expected error containing %q, but got nil", tt.expectedError)
+				} else if !strings.Contains(err.Error(), tt.expectedError) {
+					t.Errorf("getFastlyDomainAndConfigurationToActivationMap() error = %q, want error containing %q", err.Error(), tt.expectedError)
+				}
+				return // Don't check result if we expected an error
+			}
+
+			if err != nil {
+				t.Errorf("getFastlyDomainAndConfigurationToActivationMap() unexpected error = %v", err)
+				return
+			}
+
+			// Check API call expectations
+			if tt.expectedPageRequests > 0 {
+				if actualPageRequests != tt.expectedPageRequests {
+					t.Errorf("getFastlyDomainAndConfigurationToActivationMap() made %d page requests, want %d", actualPageRequests, tt.expectedPageRequests)
+				}
+			}
+
+			// Check result structure
+			if result == nil {
+				t.Errorf("getFastlyDomainAndConfigurationToActivationMap() returned nil result")
+				return
+			}
+
+			// Verify the result matches expected map
+			if len(result) != len(tt.expectedMap) {
+				t.Errorf("getFastlyDomainAndConfigurationToActivationMap() returned map with %d domains, want %d", len(result), len(tt.expectedMap))
+			}
+
+			// Check each domain in the expected map
+			for expectedDomainID, expectedConfigs := range tt.expectedMap {
+				actualConfigs, domainExists := result[expectedDomainID]
+				if !domainExists {
+					t.Errorf("getFastlyDomainAndConfigurationToActivationMap() missing expected domain %q", expectedDomainID)
+					continue
+				}
+
+				if len(actualConfigs) != len(expectedConfigs) {
+					t.Errorf("getFastlyDomainAndConfigurationToActivationMap() domain %q has %d configs, want %d", expectedDomainID, len(actualConfigs), len(expectedConfigs))
+				}
+
+				// Check each configuration in the domain
+				for expectedConfigID, expectedActivation := range expectedConfigs {
+					actualActivation, configExists := actualConfigs[expectedConfigID]
+					if !configExists {
+						t.Errorf("getFastlyDomainAndConfigurationToActivationMap() domain %q missing expected config %q", expectedDomainID, expectedConfigID)
+						continue
+					}
+
+					// Verify activation details
+					if actualActivation.ID != expectedActivation.ID {
+						t.Errorf("getFastlyDomainAndConfigurationToActivationMap() domain %q config %q activation ID = %q, want %q", expectedDomainID, expectedConfigID, actualActivation.ID, expectedActivation.ID)
+					}
+					if actualActivation.Domain.ID != expectedActivation.Domain.ID {
+						t.Errorf("getFastlyDomainAndConfigurationToActivationMap() domain %q config %q activation domain ID = %q, want %q", expectedDomainID, expectedConfigID, actualActivation.Domain.ID, expectedActivation.Domain.ID)
+					}
+					if actualActivation.Configuration.ID != expectedActivation.Configuration.ID {
+						t.Errorf("getFastlyDomainAndConfigurationToActivationMap() domain %q config %q activation configuration ID = %q, want %q", expectedDomainID, expectedConfigID, actualActivation.Configuration.ID, expectedActivation.Configuration.ID)
+					}
+				}
+			}
+
+			// Check for unexpected domains in result
+			for actualDomainID := range result {
+				if _, expected := tt.expectedMap[actualDomainID]; !expected {
+					t.Errorf("getFastlyDomainAndConfigurationToActivationMap() unexpected domain %q in result", actualDomainID)
+				}
+			}
+		})
+	}
+}
