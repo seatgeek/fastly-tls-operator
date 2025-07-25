@@ -3010,3 +3010,400 @@ func TestLogic_getFastlyCertificateMatchingSubject(t *testing.T) {
 		})
 	}
 }
+
+func TestLogic_getFastlyTLSActivationState(t *testing.T) {
+	tests := []struct {
+		name                        string
+		setupObjects                []client.Object                             // K8s objects to create in fake client
+		mockFastlyCertificate       *fastly.CustomTLSCertificate                // What getFastlyCertificateMatchingSubject returns
+		getFastlyCertificateError   string                                      // Error from getFastlyCertificateMatchingSubject
+		mockActivationMap           map[string]map[string]*fastly.TLSActivation // What getFastlyDomainAndConfigurationToActivationMap returns
+		getActivationMapError       string                                      // Error from getFastlyDomainAndConfigurationToActivationMap
+		expectedTLSConfigurationIds []string                                    // TLS configuration IDs in the subject
+		expectedMissingActivations  []TLSActivationData
+		expectedExtraActivationIDs  []string
+		expectedError               string
+	}{
+		{
+			name: "no certificate exists in fastly - returns empty results",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+				},
+			},
+			mockFastlyCertificate:       nil, // No certificate found
+			expectedTLSConfigurationIds: []string{"config1", "config2"},
+			expectedMissingActivations:  []TLSActivationData{},
+			expectedExtraActivationIDs:  []string{},
+		},
+		{
+			name: "certificate exists but no domains - returns empty results",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+				},
+			},
+			mockFastlyCertificate: &fastly.CustomTLSCertificate{
+				ID:      "cert-123",
+				Name:    "test-certificate",
+				Domains: []*fastly.TLSDomain{}, // No domains
+			},
+			mockActivationMap:           map[string]map[string]*fastly.TLSActivation{},
+			expectedTLSConfigurationIds: []string{"config1", "config2"},
+			expectedMissingActivations:  []TLSActivationData{},
+			expectedExtraActivationIDs:  []string{},
+		},
+		{
+			name: "certificate exists with domains but no expected configurations - returns empty results",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+				},
+			},
+			mockFastlyCertificate: &fastly.CustomTLSCertificate{
+				ID:   "cert-123",
+				Name: "test-certificate",
+				Domains: []*fastly.TLSDomain{
+					{ID: "domain1"},
+					{ID: "domain2"},
+				},
+			},
+			mockActivationMap:           map[string]map[string]*fastly.TLSActivation{},
+			expectedTLSConfigurationIds: []string{}, // No expected configurations
+			expectedMissingActivations:  []TLSActivationData{},
+			expectedExtraActivationIDs:  []string{},
+		},
+		{
+			name: "missing activations - some combinations don't exist",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+				},
+			},
+			mockFastlyCertificate: &fastly.CustomTLSCertificate{
+				ID:   "cert-123",
+				Name: "test-certificate",
+				Domains: []*fastly.TLSDomain{
+					{ID: "domain1"},
+					{ID: "domain2"},
+				},
+			},
+			mockActivationMap: map[string]map[string]*fastly.TLSActivation{
+				// domain1 has config1 but missing config2
+				"domain1": {
+					"config1": {ID: "activation1", Domain: &fastly.TLSDomain{ID: "domain1"}, Configuration: &fastly.TLSConfiguration{ID: "config1"}},
+				},
+				// domain2 has no configurations at all
+				"domain2": {},
+			},
+			expectedTLSConfigurationIds: []string{"config1", "config2"},
+			expectedMissingActivations: []TLSActivationData{
+				// Missing: domain1 + config2
+				{
+					Certificate:   &fastly.CustomTLSCertificate{ID: "cert-123", Name: "test-certificate", Domains: []*fastly.TLSDomain{{ID: "domain1"}, {ID: "domain2"}}},
+					Configuration: &fastly.TLSConfiguration{ID: "config2"},
+					Domain:        &fastly.TLSDomain{ID: "domain1"},
+				},
+				// Missing: domain2 + config1
+				{
+					Certificate:   &fastly.CustomTLSCertificate{ID: "cert-123", Name: "test-certificate", Domains: []*fastly.TLSDomain{{ID: "domain1"}, {ID: "domain2"}}},
+					Configuration: &fastly.TLSConfiguration{ID: "config1"},
+					Domain:        &fastly.TLSDomain{ID: "domain2"},
+				},
+				// Missing: domain2 + config2
+				{
+					Certificate:   &fastly.CustomTLSCertificate{ID: "cert-123", Name: "test-certificate", Domains: []*fastly.TLSDomain{{ID: "domain1"}, {ID: "domain2"}}},
+					Configuration: &fastly.TLSConfiguration{ID: "config2"},
+					Domain:        &fastly.TLSDomain{ID: "domain2"},
+				},
+			},
+			expectedExtraActivationIDs: []string{}, // domain1+config1 gets removed from map since it's expected
+		},
+		{
+			name: "extra activations - some activations exist but aren't expected",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+				},
+			},
+			mockFastlyCertificate: &fastly.CustomTLSCertificate{
+				ID:   "cert-123",
+				Name: "test-certificate",
+				Domains: []*fastly.TLSDomain{
+					{ID: "domain1"},
+				},
+			},
+			mockActivationMap: map[string]map[string]*fastly.TLSActivation{
+				"domain1": {
+					"config1": {ID: "activation1", Domain: &fastly.TLSDomain{ID: "domain1"}, Configuration: &fastly.TLSConfiguration{ID: "config1"}},
+					"config3": {ID: "activation3", Domain: &fastly.TLSDomain{ID: "domain1"}, Configuration: &fastly.TLSConfiguration{ID: "config3"}}, // Extra - not expected
+				},
+			},
+			expectedTLSConfigurationIds: []string{"config1"},     // Only expect config1
+			expectedMissingActivations:  []TLSActivationData{},   // No missing activations
+			expectedExtraActivationIDs:  []string{"activation3"}, // config3 activation should be deleted
+		},
+		{
+			name: "mixed scenario - both missing and extra activations",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+				},
+			},
+			mockFastlyCertificate: &fastly.CustomTLSCertificate{
+				ID:   "cert-123",
+				Name: "test-certificate",
+				Domains: []*fastly.TLSDomain{
+					{ID: "domain1"},
+					{ID: "domain2"},
+				},
+			},
+			mockActivationMap: map[string]map[string]*fastly.TLSActivation{
+				"domain1": {
+					"config1": {ID: "activation1", Domain: &fastly.TLSDomain{ID: "domain1"}, Configuration: &fastly.TLSConfiguration{ID: "config1"}}, // Expected - will be kept
+					"config3": {ID: "activation3", Domain: &fastly.TLSDomain{ID: "domain1"}, Configuration: &fastly.TLSConfiguration{ID: "config3"}}, // Extra - should be deleted
+				},
+				"domain2": {
+					"config4": {ID: "activation4", Domain: &fastly.TLSDomain{ID: "domain2"}, Configuration: &fastly.TLSConfiguration{ID: "config4"}}, // Extra - should be deleted
+				},
+			},
+			expectedTLSConfigurationIds: []string{"config1", "config2"},
+			expectedMissingActivations: []TLSActivationData{
+				// Missing: domain1 + config2
+				{
+					Certificate:   &fastly.CustomTLSCertificate{ID: "cert-123", Name: "test-certificate", Domains: []*fastly.TLSDomain{{ID: "domain1"}, {ID: "domain2"}}},
+					Configuration: &fastly.TLSConfiguration{ID: "config2"},
+					Domain:        &fastly.TLSDomain{ID: "domain1"},
+				},
+				// Missing: domain2 + config1
+				{
+					Certificate:   &fastly.CustomTLSCertificate{ID: "cert-123", Name: "test-certificate", Domains: []*fastly.TLSDomain{{ID: "domain1"}, {ID: "domain2"}}},
+					Configuration: &fastly.TLSConfiguration{ID: "config1"},
+					Domain:        &fastly.TLSDomain{ID: "domain2"},
+				},
+				// Missing: domain2 + config2
+				{
+					Certificate:   &fastly.CustomTLSCertificate{ID: "cert-123", Name: "test-certificate", Domains: []*fastly.TLSDomain{{ID: "domain1"}, {ID: "domain2"}}},
+					Configuration: &fastly.TLSConfiguration{ID: "config2"},
+					Domain:        &fastly.TLSDomain{ID: "domain2"},
+				},
+			},
+			expectedExtraActivationIDs: []string{"activation3", "activation4"}, // Both extra activations should be deleted
+		},
+		{
+			name: "all activations exist correctly - no changes needed",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+				},
+			},
+			mockFastlyCertificate: &fastly.CustomTLSCertificate{
+				ID:   "cert-123",
+				Name: "test-certificate",
+				Domains: []*fastly.TLSDomain{
+					{ID: "domain1"},
+				},
+			},
+			mockActivationMap: map[string]map[string]*fastly.TLSActivation{
+				"domain1": {
+					"config1": {ID: "activation1", Domain: &fastly.TLSDomain{ID: "domain1"}, Configuration: &fastly.TLSConfiguration{ID: "config1"}},
+					"config2": {ID: "activation2", Domain: &fastly.TLSDomain{ID: "domain1"}, Configuration: &fastly.TLSConfiguration{ID: "config2"}},
+				},
+			},
+			expectedTLSConfigurationIds: []string{"config1", "config2"},
+			expectedMissingActivations:  []TLSActivationData{}, // All activations exist
+			expectedExtraActivationIDs:  []string{},            // No extra activations
+		},
+		{
+			name: "error getting fastly certificate",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+				},
+			},
+			getFastlyCertificateError:   "fastly api connection failed",
+			expectedTLSConfigurationIds: []string{"config1"},
+			expectedError:               "failed to get Fastly certificate matching subject",
+		},
+		{
+			name: "error getting activation map",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+				},
+			},
+			mockFastlyCertificate: &fastly.CustomTLSCertificate{
+				ID:   "cert-123",
+				Name: "test-certificate",
+				Domains: []*fastly.TLSDomain{
+					{ID: "domain1"},
+				},
+			},
+			getActivationMapError:       "fastly activation list failed",
+			expectedTLSConfigurationIds: []string{"config1"},
+			expectedError:               "failed to get Fastly domain and configuration to activation map",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create mock Fastly client
+			mockFastlyClient := &MockFastlyClient{
+				// Mock ListCustomTLSCertificates to control what getFastlyCertificateMatchingSubject finds
+				ListCustomTLSCertificatesFunc: func(ctx context.Context, input *fastly.ListCustomTLSCertificatesInput) ([]*fastly.CustomTLSCertificate, error) {
+					if tt.getFastlyCertificateError != "" {
+						return nil, errors.New(tt.getFastlyCertificateError)
+					}
+
+					// Return the mock certificate if it exists, otherwise empty list
+					if input.PageNumber == 1 && tt.mockFastlyCertificate != nil {
+						return []*fastly.CustomTLSCertificate{tt.mockFastlyCertificate}, nil
+					}
+					return []*fastly.CustomTLSCertificate{}, nil
+				},
+				// Mock ListTLSActivations to control what getFastlyDomainAndConfigurationToActivationMap returns
+				ListTLSActivationsFunc: func(ctx context.Context, input *fastly.ListTLSActivationsInput) ([]*fastly.TLSActivation, error) {
+					if tt.getActivationMapError != "" {
+						return nil, errors.New(tt.getActivationMapError)
+					}
+
+					// Convert the map back to a flat list for the mock API response
+					var activations []*fastly.TLSActivation
+					for _, configToActivation := range tt.mockActivationMap {
+						for _, activation := range configToActivation {
+							activations = append(activations, activation)
+						}
+					}
+
+					// Only return on first page to simulate simple case
+					if input.PageNumber == 1 {
+						return activations, nil
+					}
+					return []*fastly.TLSActivation{}, nil
+				},
+			}
+
+			// Create fake k8s client with test objects
+			scheme := runtime.NewScheme()
+			_ = cmv1.AddToScheme(scheme)
+
+			fakeClient := fake.NewClientBuilder().
+				WithScheme(scheme).
+				WithObjects(tt.setupObjects...).
+				Build()
+
+			// Create Logic instance
+			logic := &Logic{
+				FastlyClient: mockFastlyClient,
+			}
+
+			// Create test context with fake K8s client and expected TLS configuration IDs
+			ctx := createTestContext()
+			ctx.Client = &k8sutil.ContextClient{
+				SchemedClient: k8sutil.SchemedClient{
+					Client: fakeClient,
+				},
+				Context:   context.Background(),
+				Namespace: "test-namespace",
+			}
+			ctx.Subject.Spec.TLSConfigurationIds = tt.expectedTLSConfigurationIds
+
+			// Call the function under test
+			missingActivations, extraActivationIDs, err := logic.getFastlyTLSActivationState(ctx)
+
+			// Check error expectation
+			if tt.expectedError != "" {
+				if err == nil {
+					t.Errorf("getFastlyTLSActivationState() expected error containing %q, but got nil", tt.expectedError)
+				} else if !strings.Contains(err.Error(), tt.expectedError) {
+					t.Errorf("getFastlyTLSActivationState() error = %q, want error containing %q", err.Error(), tt.expectedError)
+				}
+				return // Don't check results if we expected an error
+			}
+
+			if err != nil {
+				t.Errorf("getFastlyTLSActivationState() unexpected error = %v", err)
+				return
+			}
+
+			// Check missing activations result
+			if len(missingActivations) != len(tt.expectedMissingActivations) {
+				t.Errorf("getFastlyTLSActivationState() returned %d missing activations, want %d", len(missingActivations), len(tt.expectedMissingActivations))
+			} else {
+				// Verify each missing activation
+				for i, expected := range tt.expectedMissingActivations {
+					if i >= len(missingActivations) {
+						t.Errorf("getFastlyTLSActivationState() missing activation %d not found", i)
+						continue
+					}
+					actual := missingActivations[i]
+					if actual.Certificate.ID != expected.Certificate.ID {
+						t.Errorf("getFastlyTLSActivationState() missing activation %d certificate ID = %s, want %s", i, actual.Certificate.ID, expected.Certificate.ID)
+					}
+					if actual.Configuration.ID != expected.Configuration.ID {
+						t.Errorf("getFastlyTLSActivationState() missing activation %d configuration ID = %s, want %s", i, actual.Configuration.ID, expected.Configuration.ID)
+					}
+					if actual.Domain.ID != expected.Domain.ID {
+						t.Errorf("getFastlyTLSActivationState() missing activation %d domain ID = %s, want %s", i, actual.Domain.ID, expected.Domain.ID)
+					}
+				}
+			}
+
+			// Check extra activation IDs result
+			if len(extraActivationIDs) != len(tt.expectedExtraActivationIDs) {
+				t.Errorf("getFastlyTLSActivationState() returned %d extra activation IDs, want %d", len(extraActivationIDs), len(tt.expectedExtraActivationIDs))
+			} else {
+				// Convert both slices to maps for easier comparison (order doesn't matter)
+				actualMap := make(map[string]bool)
+				for _, id := range extraActivationIDs {
+					actualMap[id] = true
+				}
+				expectedMap := make(map[string]bool)
+				for _, id := range tt.expectedExtraActivationIDs {
+					expectedMap[id] = true
+				}
+
+				// Check that all expected IDs are present
+				for expectedID := range expectedMap {
+					if !actualMap[expectedID] {
+						t.Errorf("getFastlyTLSActivationState() missing expected extra activation ID %s", expectedID)
+					}
+				}
+
+				// Check that no unexpected IDs are present
+				for actualID := range actualMap {
+					if !expectedMap[actualID] {
+						t.Errorf("getFastlyTLSActivationState() unexpected extra activation ID %s", actualID)
+					}
+				}
+			}
+		})
+	}
+}
