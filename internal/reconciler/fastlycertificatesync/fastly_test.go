@@ -4,14 +4,19 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"strings"
 	"testing"
 
+	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	"github.com/fastly/go-fastly/v11/fastly"
 	"github.com/go-logr/logr"
+	"github.com/seatgeek/k8s-reconciler-generic/pkg/k8sutil"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 // MockFastlyClient implements FastlyClientInterface for testing
@@ -886,150 +891,215 @@ nqCTMVzmHe6A84rU57AR8Cd3ns2wJCdVBVXqipCW+g==
 }
 
 func TestLogic_createFastlyPrivateKey(t *testing.T) {
-	// Test the core logic of createFastlyPrivateKey by mocking getCertificateAndTLSSecretFromSubject
-	// We'll test the Fastly API interaction and secret data handling without K8s client dependencies
-
 	tests := []struct {
-		name                   string
-		mockSecretData         map[string][]byte
-		mockSecretName         string
-		mockSecretNamespace    string
-		mockGetSecretError     error
-		fastlyCreateError      error
-		expectedFastlyKeyInput *fastly.CreatePrivateKeyInput
-		expectedError          string
+		name                       string
+		setupObjects               []client.Object // K8s objects to create in fake client
+		fastlyAPIShouldNotBeCalled bool            // If true, fail test if API is called
+		fastlyAPIError             string          // If set, return this error from API
+		expectedError              string
+		expectFastlyClientCall     bool
+		expectedFastlyInput        *fastly.CreatePrivateKeyInput
 	}{
 		{
-			name: "successful creation",
-			mockSecretData: map[string][]byte{
-				"tls.key": []byte("-----BEGIN PRIVATE KEY-----\nfake-private-key-data\n-----END PRIVATE KEY-----"),
-				"tls.crt": []byte("-----BEGIN CERTIFICATE-----\nfake-cert-data\n-----END CERTIFICATE-----"),
+			name: "successful private key creation",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte("-----BEGIN RSA PRIVATE KEY-----\ntest-key-data\n-----END RSA PRIVATE KEY-----"),
+						"tls.crt": []byte("test-cert-data"),
+					},
+				},
 			},
-			mockSecretName:      "test-secret",
-			mockSecretNamespace: "test-namespace",
-			expectedFastlyKeyInput: &fastly.CreatePrivateKeyInput{
-				Key:  "-----BEGIN PRIVATE KEY-----\nfake-private-key-data\n-----END PRIVATE KEY-----",
+			expectFastlyClientCall: true,
+			expectedFastlyInput: &fastly.CreatePrivateKeyInput{
+				Key:  "-----BEGIN RSA PRIVATE KEY-----\ntest-key-data\n-----END RSA PRIVATE KEY-----",
 				Name: "test-secret",
 			},
 		},
 		{
-			name:               "error from getCertificateAndTLSSecretFromSubject",
-			mockGetSecretError: errors.New("certificate not found"),
-			expectedError:      "failed to get TLS secret from context: certificate not found",
+			name:                       "certificate not found",
+			setupObjects:               []client.Object{}, // No objects - certificate missing
+			fastlyAPIShouldNotBeCalled: true,
+			expectedError:              "failed to get TLS secret from context",
+			expectFastlyClientCall:     false,
+		},
+		{
+			name: "secret not found",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret", // This secret doesn't exist
+					},
+				},
+				// No secret object
+			},
+			fastlyAPIShouldNotBeCalled: true,
+			expectedError:              "failed to get TLS secret from context",
+			expectFastlyClientCall:     false,
 		},
 		{
 			name: "secret missing tls.key",
-			mockSecretData: map[string][]byte{
-				"tls.crt": []byte("-----BEGIN CERTIFICATE-----\nfake-cert-data\n-----END CERTIFICATE-----"),
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.crt": []byte("test-cert-data"),
+						// Note: tls.key is missing
+					},
+				},
 			},
-			mockSecretName:      "test-secret",
-			mockSecretNamespace: "test-namespace",
-			expectedError:       "secret test-namespace/test-secret does not contain tls.key",
+			fastlyAPIShouldNotBeCalled: true,
+			expectedError:              "secret test-namespace/test-secret does not contain tls.key",
+			expectFastlyClientCall:     false,
 		},
 		{
 			name: "fastly api error",
-			mockSecretData: map[string][]byte{
-				"tls.key": []byte("-----BEGIN PRIVATE KEY-----\nfake-private-key-data\n-----END PRIVATE KEY-----"),
-				"tls.crt": []byte("-----BEGIN CERTIFICATE-----\nfake-cert-data\n-----END CERTIFICATE-----"),
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.key": []byte("-----BEGIN RSA PRIVATE KEY-----\ntest-key-data\n-----END RSA PRIVATE KEY-----"),
+						"tls.crt": []byte("test-cert-data"),
+					},
+				},
 			},
-			mockSecretName:      "test-secret",
-			mockSecretNamespace: "test-namespace",
-			fastlyCreateError:   errors.New("fastly connection failed"),
-			expectedFastlyKeyInput: &fastly.CreatePrivateKeyInput{
-				Key:  "-----BEGIN PRIVATE KEY-----\nfake-private-key-data\n-----END PRIVATE KEY-----",
-				Name: "test-secret",
-			},
-			expectedError: "failed to create Fastly private key: fastly connection failed",
+			fastlyAPIError:         "fastly api connection failed",
+			expectedError:          "failed to create Fastly private key: fastly api connection failed",
+			expectFastlyClientCall: true,
 		},
+	}
+
+	// Helper function to create mock Fastly client based on raw parameters
+	setupFastlyClient := func(t *testing.T, shouldNotBeCalled bool, apiError string) *MockFastlyClient {
+		return &MockFastlyClient{
+			CreatePrivateKeyFunc: func(ctx context.Context, input *fastly.CreatePrivateKeyInput) (*fastly.PrivateKey, error) {
+				if shouldNotBeCalled {
+					t.Error("CreatePrivateKey should not be called in this test case")
+					return nil, nil
+				}
+
+				if apiError != "" {
+					return nil, errors.New(apiError)
+				}
+
+				// Success case
+				return &fastly.PrivateKey{ID: "new-key-123"}, nil
+			},
+		}
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Track the actual call made to Fastly API
-			var actualCreateInput *fastly.CreatePrivateKeyInput
+			// Setup Fastly client mock with call tracking
+			var actualFastlyInput *fastly.CreatePrivateKeyInput
+			mockFastlyClient := setupFastlyClient(t, tt.fastlyAPIShouldNotBeCalled, tt.fastlyAPIError)
 
-			// Create mock Fastly client
-			mockFastlyClient := &MockFastlyClient{
-				CreatePrivateKeyFunc: func(ctx context.Context, input *fastly.CreatePrivateKeyInput) (*fastly.PrivateKey, error) {
-					actualCreateInput = input
-					if tt.fastlyCreateError != nil {
-						return nil, tt.fastlyCreateError
-					}
-					return &fastly.PrivateKey{ID: "created-key-id"}, nil
-				},
+			// Wrap the original function to capture input
+			originalFunc := mockFastlyClient.CreatePrivateKeyFunc
+			mockFastlyClient.CreatePrivateKeyFunc = func(ctx context.Context, input *fastly.CreatePrivateKeyInput) (*fastly.PrivateKey, error) {
+				actualFastlyInput = input
+				return originalFunc(ctx, input)
 			}
+
+			// Create fake k8s client with test objects
+			scheme := runtime.NewScheme()
+			_ = cmv1.AddToScheme(scheme)
+			_ = corev1.AddToScheme(scheme)
+
+			fakeClient := fake.NewClientBuilder().
+				WithScheme(scheme).
+				WithObjects(tt.setupObjects...).
+				Build()
 
 			// Create Logic instance
 			logic := &Logic{
 				FastlyClient: mockFastlyClient,
 			}
 
-			// Create test context
+			// Create test context with fake K8s client
 			ctx := createTestContext()
-
-			// Test the logic by directly calling the components that createFastlyPrivateKey uses
-			// Mock the getCertificateAndTLSSecretFromSubject call
-			var err error
-			var secretData map[string][]byte
-			var secretName, secretNamespace string
-
-			if tt.mockGetSecretError != nil {
-				err = tt.mockGetSecretError
-			} else {
-				secretData = tt.mockSecretData
-				secretName = tt.mockSecretName
-				secretNamespace = tt.mockSecretNamespace
+			ctx.Client = &k8sutil.ContextClient{
+				SchemedClient: k8sutil.SchemedClient{
+					Client: fakeClient,
+				},
+				Context:   context.Background(),
+				Namespace: "test-namespace",
 			}
 
-			// Simulate the createFastlyPrivateKey logic manually
-			if err != nil {
-				err = fmt.Errorf("failed to get TLS secret from context: %w", err)
-			} else {
-				// Check for tls.key in secret data
-				keyPEM, ok := secretData["tls.key"]
-				if !ok {
-					err = fmt.Errorf("secret %s/%s does not contain tls.key", secretNamespace, secretName)
-				} else {
-					// Call Fastly API
-					_, err = logic.FastlyClient.CreatePrivateKey(ctx, &fastly.CreatePrivateKeyInput{
-						Key:  string(keyPEM),
-						Name: secretName,
-					})
-					if err != nil {
-						err = fmt.Errorf("failed to create Fastly private key: %w", err)
-					}
-				}
-			}
+			// Call the function
+			err := logic.createFastlyPrivateKey(ctx)
 
-			// Check error
-			if tt.expectedError == "" {
-				if err != nil {
-					t.Errorf("createFastlyPrivateKey() unexpected error = %v", err)
-				}
-			} else {
+			// Check error expectation
+			if tt.expectedError != "" {
 				if err == nil {
-					t.Errorf("createFastlyPrivateKey() expected error containing %q, got nil", tt.expectedError)
+					t.Errorf("createFastlyPrivateKey() expected error containing %q, but got nil", tt.expectedError)
 				} else if !strings.Contains(err.Error(), tt.expectedError) {
 					t.Errorf("createFastlyPrivateKey() error = %q, want error containing %q", err.Error(), tt.expectedError)
 				}
+			} else {
+				if err != nil {
+					t.Errorf("createFastlyPrivateKey() unexpected error = %v", err)
+				}
 			}
 
-			// Check Fastly API call was made correctly
-			if tt.expectedFastlyKeyInput != nil {
-				if actualCreateInput == nil {
-					t.Error("createFastlyPrivateKey() expected Fastly API call but none was made")
-				} else {
-					if actualCreateInput.Key != tt.expectedFastlyKeyInput.Key {
-						t.Errorf("createFastlyPrivateKey() Fastly API Key = %q, want %q",
-							actualCreateInput.Key, tt.expectedFastlyKeyInput.Key)
+			// Check if Fastly client was called as expected
+			if tt.expectFastlyClientCall {
+				if actualFastlyInput == nil {
+					t.Error("createFastlyPrivateKey() expected Fastly CreatePrivateKey to be called, but it wasn't")
+				} else if tt.expectedFastlyInput != nil {
+					// Verify the input to CreatePrivateKey
+					if actualFastlyInput.Key != tt.expectedFastlyInput.Key {
+						t.Errorf("createFastlyPrivateKey() Fastly input Key = %q, want %q", actualFastlyInput.Key, tt.expectedFastlyInput.Key)
 					}
-					if actualCreateInput.Name != tt.expectedFastlyKeyInput.Name {
-						t.Errorf("createFastlyPrivateKey() Fastly API Name = %q, want %q",
-							actualCreateInput.Name, tt.expectedFastlyKeyInput.Name)
+					if actualFastlyInput.Name != tt.expectedFastlyInput.Name {
+						t.Errorf("createFastlyPrivateKey() Fastly input Name = %q, want %q", actualFastlyInput.Name, tt.expectedFastlyInput.Name)
 					}
 				}
-			} else if actualCreateInput != nil {
-				t.Error("createFastlyPrivateKey() unexpected Fastly API call made")
+			} else {
+				if actualFastlyInput != nil {
+					t.Error("createFastlyPrivateKey() expected Fastly CreatePrivateKey NOT to be called, but it was")
+				}
 			}
 		})
 	}
