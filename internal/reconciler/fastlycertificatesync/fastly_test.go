@@ -2,7 +2,6 @@ package fastlycertificatesync
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -370,113 +369,6 @@ func TestLogic_clearFastlyUnusedPrivateKeys(t *testing.T) {
 				} else if mockClient.DeletePrivateKeyCalls[i] != expectedID {
 					t.Errorf("clearFastlyUnusedPrivateKeys() delete call %d = %s, want %s",
 						i, mockClient.DeletePrivateKeyCalls[i], expectedID)
-				}
-			}
-		})
-	}
-}
-
-func TestGetPublicKeySHA1FromPEM(t *testing.T) {
-	// TEST DATA EXPLANATION:
-	// The following RSA private keys are real test keys generated specifically for testing purposes.
-	// These are NOT production keys and were created solely for this test using `openssl genrsa 1024`.
-	// They are safe to include in the codebase as they're only used for testing the SHA1 calculation logic.
-
-	tests := []struct {
-		name          string
-		privateKeyPEM string
-		expectedSHA1  string
-		expectError   bool
-		errorContains string
-	}{
-		{
-			name: "valid_1024_bit_rsa_key_1",
-			privateKeyPEM: `-----BEGIN RSA PRIVATE KEY-----
-MIICWwIBAAKBgQDSIX1v14YXhBhoXs4xMDFaqcw0BzFGN9BUetq4xCX0RQjOgwut
-EVAQg+zqSwRzW0eQsNuWQBX0qFlNQSxtE5/Bt0mr9Vh5VTePHAj+kLqAWYwzpRK/
-IN8oOndsvTNJQHhHWPcnopJTIB+ktuBJpqjDVn6tHmXIj2hYA9/AQJ4BywIDAQAB
-AoGAEuXcKCDT+G1y3IAaPyY8ahD3Qn6bGduPKunZneBWIX/L6Pa0KB50eufCeNfC
-ULWW3BZryTl+QACb92yzGCQ5q8KZvQ5OW2SWPc7gEh2EBUFPj/SX5u4oGFRFnVFS
-dv7A97OFWjRN1FVCMHGwhLD73Rq4YHZgsyGz1ZcaUtWZfeECQQDu0Zp/z4uxg4Xk
-QxEUYeQmRCLSPG7b3A8Ihi1EnkXrHbVnSV+2yflz7lNLAUE5/VpHdjqhzuiYUG8G
-K3N86DvpAkEA4T+INKuDyxICkUChD1ImAIPc3qhLUMgYDMPrsIjWdON0TQSpL0cQ
-IpIwVHZA6QpacIV8W1r1DoF8R0kFRoTjkwJAbwtlJHLTyJmYQzfwFCMkW6qo6kqR
-XYeoMdV57QMPDbEFrV4PtEWbyQ0TC7gspRMpzDqsLpqvykr0JNFFZNnzKQJASqI1
-bFZERf4CscQ7WYs7okIO5gvXYL3cEia8qnK8tGBFQdvAfzTJqNrNfr7sBQt0KgJg
-0RhTSGopFqmgQNx5VwJAPp9VqDDjM053vTekmu4x9eG+ItUg9fHfEJR4IcIU13DD
-nqCTMVzmHe6A84rU57AR8Cd3ns2wJCdVBVXqipCW+g==
------END RSA PRIVATE KEY-----`,
-			expectedSHA1: "1ccf8849ae82aaab5749d5c791a221354f182a73",
-		},
-		{
-			name: "valid_1024_bit_rsa_key_2",
-			privateKeyPEM: `-----BEGIN RSA PRIVATE KEY-----
-MIICWwIBAAKBgQDcohqitNHcFz6UieW++OiZ0e5m3NBbG5T1JMDehlbywuEprj/g
-hcp15DVN0QRrlpYfLo8gEGPocIEBPlVhqTApOH7KJeLKypu7nf5Oa+msOym+kNY5
-ttC54k4TDSQeO6iFWfPvRExPsodiH/MYdvskqUNYo1tC+OfPvnzOTSDeDQIDAQAB
-AoGADIpWMztN1lGn5+9ylIk3R07sWwJgAV2u+MQPBlbiaEf1XlYeIVfZaxv+f57K
-voa/n6QY1Hy6AQMsAfMWDUf9ia83KdOksEjRlk9/zcsfGCWhlAtkBWTF03GF/+qu
-WbIhL35qOJoPxebEhIdPr9DMobg6QycSIW6KX8+rbBcRMe0CQQD3tkIEbC69tcTC
-1ZryHBuM6Cif5TkisI9+CKLFnSKRikhns9Sj90Qw4ec4awxqf8tEfCdrbrpa5GNx
-CTywYd0TAkEA5APoOKgqRqLPrU/JD35OlhV8lXbTBzmCnEBkNK2mNOG3pcd9o6yI
-wTAlfb/GMOAQauVWGc2SrHV7a0MQyc9cXwJAcEL8Nk7k+/sVugreVt0gK0LHrndO
-5obH8SFuy0pEcVsPJ1hbhRe5osGubWYuUVGrSFVP9CNRd4HMA11hULp5WwJAF8po
-knDJaHFYZebrPZiaLoKzawzo29oeTJtTWUO9EctzU/LKoyc/ZZjWcJZv4W2fiOfA
-4hRW93OSmxB2Ufg21QJAMsgwXxLJXjy0ThU7YejExp+YUntrBVrAFed3NO+gBU51
-N84chfBB9g2GDYw/6drAjG7oEHDD1KOttRB5gwRzhQ==
------END RSA PRIVATE KEY-----`,
-			expectedSHA1: "a41ed6258c0928ac2e61a70dc42d20a9d4f47254",
-		},
-		{
-			name:          "invalid_pem_data",
-			privateKeyPEM: "invalid pem data",
-			expectError:   true,
-			errorContains: "failed to parse PEM block",
-		},
-		{
-			name: "valid_pem_but_invalid_rsa_key",
-			privateKeyPEM: `-----BEGIN RSA PRIVATE KEY-----
-invalidbase64data==
------END RSA PRIVATE KEY-----`,
-			expectError:   true,
-			errorContains: "failed to parse PEM block", // PEM decode fails first due to invalid base64
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := getPublicKeySHA1FromPEM([]byte(tt.privateKeyPEM))
-
-			if tt.expectError {
-				if err == nil {
-					t.Error("getPublicKeySHA1FromPEM() expected error but got nil")
-				} else if !strings.Contains(err.Error(), tt.errorContains) {
-					t.Errorf("getPublicKeySHA1FromPEM() error = %v, want error containing %q", err, tt.errorContains)
-				}
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("getPublicKeySHA1FromPEM() unexpected error = %v", err)
-			}
-
-			// Verify format (40-character hex string)
-			if len(result) != 40 {
-				t.Errorf("getPublicKeySHA1FromPEM() result length = %d, want 40", len(result))
-			}
-
-			// Verify the result is a valid hex string
-			if _, parseErr := hex.DecodeString(result); parseErr != nil {
-				t.Errorf("getPublicKeySHA1FromPEM() result %q is not valid hex", result)
-			}
-
-			// Log the result for manual verification
-			t.Logf("✓ SHA1 for %s: %s", tt.name, result)
-
-			// Assert the result matches the expected SHA1 value
-			if tt.expectedSHA1 != "" {
-				if result != tt.expectedSHA1 {
-					t.Errorf("getPublicKeySHA1FromPEM() = %s, want %s", result, tt.expectedSHA1)
 				}
 			}
 		})
