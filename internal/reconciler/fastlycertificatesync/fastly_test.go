@@ -2602,7 +2602,7 @@ rI/pIULoTkGajE0uXlIlG0k=
 }
 
 // Helper function to generate a full page of certificates
-func generateCertPage(pageNum int, count int) []*fastly.CustomTLSCertificate {
+func generateCertPage(pageNum, count int) []*fastly.CustomTLSCertificate {
 	certs := make([]*fastly.CustomTLSCertificate, count)
 	for i := 0; i < count; i++ {
 		certs[i] = &fastly.CustomTLSCertificate{

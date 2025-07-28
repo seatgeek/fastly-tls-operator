@@ -35,7 +35,6 @@ func joinErrors(errs []error) error {
 }
 
 func (l *Logic) getFastlyPrivateKeyExists(ctx *Context) (bool, error) {
-
 	_, secret, err := getCertificateAndTLSSecretFromSubject(ctx)
 	if err != nil {
 		return false, fmt.Errorf("failed to get TLS secret from context: %w", err)
@@ -91,7 +90,6 @@ func (l *Logic) getFastlyPrivateKeyExists(ctx *Context) (bool, error) {
 }
 
 func (l *Logic) createFastlyPrivateKey(ctx *Context) error {
-
 	_, secret, err := getCertificateAndTLSSecretFromSubject(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get TLS secret from context: %w", err)
@@ -115,7 +113,6 @@ func (l *Logic) createFastlyPrivateKey(ctx *Context) error {
 }
 
 func (l *Logic) getFastlyCertificateStatus(ctx *Context) (CertificateStatus, error) {
-
 	fastlyCertificate, err := l.getFastlyCertificateMatchingSubject(ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed to get Fastly certificate matching subject: %w", err)
@@ -142,7 +139,6 @@ func (l *Logic) getFastlyCertificateStatus(ctx *Context) (CertificateStatus, err
 
 // Get the Fastly certificate whose details match the certificate referenced by the subject
 func (l *Logic) getFastlyCertificateMatchingSubject(ctx *Context) (*fastly.CustomTLSCertificate, error) {
-
 	subjectCertificate := &cmv1.Certificate{}
 	if err := ctx.Client.Client.Get(ctx, types.NamespacedName{Name: ctx.Subject.Spec.CertificateName, Namespace: ctx.Subject.Namespace}, subjectCertificate); err != nil {
 		return nil, fmt.Errorf("failed to get certificate of name %s and namespace %s: %w", ctx.Subject.Spec.CertificateName, ctx.Subject.Namespace, err)
@@ -184,7 +180,6 @@ func (l *Logic) getFastlyCertificateMatchingSubject(ctx *Context) (*fastly.Custo
 }
 
 func (l *Logic) createFastlyCertificate(ctx *Context) error {
-
 	subjectCertificate, tlsSecret, err := getCertificateAndTLSSecretFromSubject(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get TLS secret from context: %w", err)
@@ -241,7 +236,6 @@ func (l *Logic) updateFastlyCertificate(ctx *Context) error {
 }
 
 func (l *Logic) isFastlyCertificateStale(ctx *Context, fastlyCertificate *fastly.CustomTLSCertificate) (bool, error) {
-
 	subjectCertificate, tlsSecret, err := getCertificateAndTLSSecretFromSubject(ctx)
 	if err != nil {
 		return false, fmt.Errorf("failed to get TLS secret from context: %w", err)
@@ -272,7 +266,6 @@ func (l *Logic) isFastlyCertificateStale(ctx *Context, fastlyCertificate *fastly
 }
 
 func (l *Logic) getFastlyTLSActivationState(ctx *Context) ([]TLSActivationData, []string, error) {
-
 	missingTLSActivationData := []TLSActivationData{}
 	extraTLSActivationIDs := []string{}
 

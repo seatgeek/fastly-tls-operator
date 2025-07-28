@@ -50,7 +50,7 @@ help:
 	@echo ""
 	@echo "Code Quality:"
 	@echo "  lint          - Run golangci-lint (same as CI)"
-	@echo "  fmt           - Run go fmt"
+	@echo "  fmt           - Run gofumpt formatting"
 	@echo "  vet           - Run go vet"
 	@echo "  test          - Run tests with coverage"
 	@echo "  check         - Run all code quality checks (fmt, vet, lint, test)"
@@ -141,10 +141,10 @@ lint:
 	@echo "Running golangci-lint..."
 	golangci-lint run
 
-# Run go fmt
+# Run gofumpt formatting
 fmt:
-	@echo "Running go fmt..."
-	go fmt ./...
+	@echo "Running gofumpt formatting..."
+	$(shell go env GOPATH)/bin/gofumpt -w .
 
 # Run go vet
 vet:

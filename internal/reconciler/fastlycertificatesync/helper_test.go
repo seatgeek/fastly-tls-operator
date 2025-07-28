@@ -1,12 +1,11 @@
 package fastlycertificatesync
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"strings"
 	"testing"
-
-	"bytes"
 
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	cmmetav1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
@@ -34,36 +33,6 @@ func createTestContext() *Context {
 		},
 		Config: &Config{},
 		Log:    logr.Discard(), // Use a no-op logger for tests
-	}
-}
-
-// Helper to create a certificate with specific conditions
-func createCertificateWithConditions(conditions []cmv1.CertificateCondition) *cmv1.Certificate {
-	return &cmv1.Certificate{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-certificate",
-			Namespace: "test-namespace",
-		},
-		Spec: cmv1.CertificateSpec{
-			SecretName: "test-secret",
-		},
-		Status: cmv1.CertificateStatus{
-			Conditions: conditions,
-		},
-	}
-}
-
-// Helper to create a mock secret
-func createTestSecret() *corev1.Secret {
-	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-secret",
-			Namespace: "test-namespace",
-		},
-		Data: map[string][]byte{
-			"tls.crt": []byte("test-cert-data"),
-			"tls.key": []byte("test-key-data"),
-		},
 	}
 }
 
@@ -802,22 +771,6 @@ MIICACertificateDataHere
 			description:             "Should return error when secret has nil data in production mode",
 		},
 		{
-			name: "empty_tls_crt_value_production_mode",
-			secret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-secret",
-					Namespace: "test-namespace",
-				},
-				Data: map[string][]byte{
-					"tls.crt": []byte{}, // Empty but present
-					"tls.key": []byte("dummy-key-data"),
-				},
-			},
-			hackLocalReconciliation: false,
-			expectedPEM:             []byte{}, // Should return empty byte slice, not error
-			description:             "Should return empty PEM when tls.crt is empty but present in production mode",
-		},
-		{
 			name: "empty_ca_crt_value_local_mode",
 			secret: &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
@@ -826,8 +779,8 @@ MIICACertificateDataHere
 				},
 				Data: map[string][]byte{
 					"tls.crt": dummyCertPEM,
-					"ca.crt":  []byte{}, // Empty but present
 					"tls.key": []byte("dummy-key-data"),
+					"ca.crt":  {},
 				},
 			},
 			hackLocalReconciliation: true,

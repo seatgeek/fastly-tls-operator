@@ -5,7 +5,6 @@ import (
 )
 
 func (l *Logic) ReconcileComplete(c *Context, rs genrec.ReconciliationStatus, err error) {
-
 	if c.Subject == nil {
 		return
 	}

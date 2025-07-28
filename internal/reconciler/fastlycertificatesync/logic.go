@@ -29,8 +29,10 @@ import (
 
 type Context = genrec.Context[*v1alpha1.FastlyCertificateSync, *Config]
 
-type CertificateStatus string
-type TLSActivationState string
+type (
+	CertificateStatus  string
+	TLSActivationState string
+)
 
 const (
 	CertificateStatusMissing CertificateStatus = "Missing"
@@ -135,7 +137,6 @@ func (l *Logic) ConfigureController(cb *builder.Builder, cluster cluster.Cluster
 		for _, fastlyCertificateSync := range all.Items {
 			// reconcile fastlyCertificateSync resources that are referenced by the watched certificate
 			if (object.GetName() == fastlyCertificateSync.Spec.CertificateName) && (object.GetNamespace() == fastlyCertificateSync.GetNamespace()) {
-
 				res = append(res, reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Name:      fastlyCertificateSync.GetName(),
@@ -221,7 +222,6 @@ func (l *Logic) ObserveResources(ctx *Context) (genrec.Resources, error) {
 }
 
 func (l *Logic) ApplyUnmanaged(ctx *Context) error {
-
 	if !l.SubjectReadyForReconciliation {
 		ctx.Log.Info("Subject is not ready for reconciliation, skipping")
 		return nil

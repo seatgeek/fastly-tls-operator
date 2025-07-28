@@ -52,7 +52,6 @@ func getCertificateAndTLSSecretFromSubject(ctx *Context) (*cmv1.Certificate, *co
 
 // GetPublicKeySHA1FromPEM calculates the SHA1 hash of the public key derived from a PEM-encoded private key
 func getPublicKeySHA1FromPEM(keyPEM []byte) (string, error) {
-
 	// Decode the PEM block
 	block, _ := pem.Decode(keyPEM)
 	if block == nil {
