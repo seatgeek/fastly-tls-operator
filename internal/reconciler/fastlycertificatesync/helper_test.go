@@ -3,7 +3,6 @@ package fastlycertificatesync
 import (
 	"context"
 	"encoding/hex"
-	"errors"
 	"strings"
 	"testing"
 
@@ -20,9 +19,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
-
-// Mock function type for getCertificateAndTLSSecretFromSubject
-type getCertificateAndTLSSecretFromSubjectFunc func(ctx *Context) (*cmv1.Certificate, *corev1.Secret, error)
 
 // Helper to create a test context with necessary fields
 func createTestContext() *Context {
@@ -71,163 +67,319 @@ func createTestSecret() *corev1.Secret {
 	}
 }
 
-// Test helper function that mimics isSubjectReadyForReconciliation but allows mocking
-func isSubjectReadyForReconciliationWithMock(ctx *Context, mockGetCertAndSecret getCertificateAndTLSSecretFromSubjectFunc) bool {
-	var certificate *cmv1.Certificate
-	var err error
-	if certificate, _, err = mockGetCertAndSecret(ctx); err != nil {
-		ctx.Log.Info("Certificate and Secret not available, we will not reconcile this FastlyCertificateSync", "name", ctx.Subject.Name, "namespace", ctx.Subject.Namespace)
-		return false
-	}
-
-	for _, condition := range certificate.Status.Conditions {
-		if condition.Type == cmv1.CertificateConditionReady && condition.Status == cmmetav1.ConditionTrue {
-			return true
-		}
-	}
-	return false
-}
-
 func TestIsSubjectReadyForReconciliation(t *testing.T) {
 	tests := []struct {
 		name           string
-		mockFunc       getCertificateAndTLSSecretFromSubjectFunc
+		setupObjects   []client.Object // K8s objects to create in fake client
 		expectedResult bool
 		description    string
 	}{
 		{
-			name: "error_getting_certificate_and_secret",
-			mockFunc: func(ctx *Context) (*cmv1.Certificate, *corev1.Secret, error) {
-				return nil, nil, errors.New("failed to get certificate")
-			},
+			name:           "error_getting_certificate_and_secret",
+			setupObjects:   []client.Object{}, // No objects - should fail to find certificate
 			expectedResult: false,
 			description:    "Should return false when getCertificateAndTLSSecretFromSubject returns an error",
 		},
 		{
 			name: "certificate_ready_condition_true",
-			mockFunc: func(ctx *Context) (*cmv1.Certificate, *corev1.Secret, error) {
-				certificate := createCertificateWithConditions([]cmv1.CertificateCondition{
-					{
-						Type:   cmv1.CertificateConditionReady,
-						Status: cmmetav1.ConditionTrue,
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
 					},
-				})
-				secret := createTestSecret()
-				return certificate, secret, nil
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+					Status: cmv1.CertificateStatus{
+						Conditions: []cmv1.CertificateCondition{
+							{
+								Type:   cmv1.CertificateConditionReady,
+								Status: cmmetav1.ConditionTrue,
+							},
+						},
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.crt": []byte("test-cert-data"),
+						"tls.key": []byte("test-key-data"),
+					},
+				},
 			},
 			expectedResult: true,
 			description:    "Should return true when certificate has ready condition with status True",
 		},
 		{
 			name: "certificate_ready_condition_false",
-			mockFunc: func(ctx *Context) (*cmv1.Certificate, *corev1.Secret, error) {
-				certificate := createCertificateWithConditions([]cmv1.CertificateCondition{
-					{
-						Type:   cmv1.CertificateConditionReady,
-						Status: cmmetav1.ConditionFalse,
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
 					},
-				})
-				secret := createTestSecret()
-				return certificate, secret, nil
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+					Status: cmv1.CertificateStatus{
+						Conditions: []cmv1.CertificateCondition{
+							{
+								Type:   cmv1.CertificateConditionReady,
+								Status: cmmetav1.ConditionFalse,
+							},
+						},
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.crt": []byte("test-cert-data"),
+						"tls.key": []byte("test-key-data"),
+					},
+				},
 			},
 			expectedResult: false,
 			description:    "Should return false when certificate has ready condition with status False",
 		},
 		{
 			name: "certificate_ready_condition_unknown",
-			mockFunc: func(ctx *Context) (*cmv1.Certificate, *corev1.Secret, error) {
-				certificate := createCertificateWithConditions([]cmv1.CertificateCondition{
-					{
-						Type:   cmv1.CertificateConditionReady,
-						Status: cmmetav1.ConditionUnknown,
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
 					},
-				})
-				secret := createTestSecret()
-				return certificate, secret, nil
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+					Status: cmv1.CertificateStatus{
+						Conditions: []cmv1.CertificateCondition{
+							{
+								Type:   cmv1.CertificateConditionReady,
+								Status: cmmetav1.ConditionUnknown,
+							},
+						},
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.crt": []byte("test-cert-data"),
+						"tls.key": []byte("test-key-data"),
+					},
+				},
 			},
 			expectedResult: false,
 			description:    "Should return false when certificate has ready condition with status Unknown",
 		},
 		{
 			name: "certificate_no_ready_condition",
-			mockFunc: func(ctx *Context) (*cmv1.Certificate, *corev1.Secret, error) {
-				certificate := createCertificateWithConditions([]cmv1.CertificateCondition{
-					{
-						Type:   cmv1.CertificateConditionIssuing,
-						Status: cmmetav1.ConditionTrue,
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
 					},
-				})
-				secret := createTestSecret()
-				return certificate, secret, nil
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+					Status: cmv1.CertificateStatus{
+						Conditions: []cmv1.CertificateCondition{
+							{
+								Type:   cmv1.CertificateConditionIssuing,
+								Status: cmmetav1.ConditionTrue,
+							},
+						},
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.crt": []byte("test-cert-data"),
+						"tls.key": []byte("test-key-data"),
+					},
+				},
 			},
 			expectedResult: false,
 			description:    "Should return false when certificate has no ready condition",
 		},
 		{
 			name: "certificate_no_conditions_at_all",
-			mockFunc: func(ctx *Context) (*cmv1.Certificate, *corev1.Secret, error) {
-				certificate := createCertificateWithConditions([]cmv1.CertificateCondition{})
-				secret := createTestSecret()
-				return certificate, secret, nil
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
+					},
+					Status: cmv1.CertificateStatus{
+						Conditions: []cmv1.CertificateCondition{},
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.crt": []byte("test-cert-data"),
+						"tls.key": []byte("test-key-data"),
+					},
+				},
 			},
 			expectedResult: false,
 			description:    "Should return false when certificate has no conditions at all",
 		},
 		{
 			name: "certificate_multiple_conditions_ready_true",
-			mockFunc: func(ctx *Context) (*cmv1.Certificate, *corev1.Secret, error) {
-				certificate := createCertificateWithConditions([]cmv1.CertificateCondition{
-					{
-						Type:   cmv1.CertificateConditionIssuing,
-						Status: cmmetav1.ConditionFalse,
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
 					},
-					{
-						Type:   cmv1.CertificateConditionReady,
-						Status: cmmetav1.ConditionTrue,
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
 					},
-					{
-						Type:   "CustomCondition",
-						Status: cmmetav1.ConditionUnknown,
+					Status: cmv1.CertificateStatus{
+						Conditions: []cmv1.CertificateCondition{
+							{
+								Type:   cmv1.CertificateConditionIssuing,
+								Status: cmmetav1.ConditionFalse,
+							},
+							{
+								Type:   cmv1.CertificateConditionReady,
+								Status: cmmetav1.ConditionTrue,
+							},
+							{
+								Type:   "CustomCondition",
+								Status: cmmetav1.ConditionUnknown,
+							},
+						},
 					},
-				})
-				secret := createTestSecret()
-				return certificate, secret, nil
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.crt": []byte("test-cert-data"),
+						"tls.key": []byte("test-key-data"),
+					},
+				},
 			},
 			expectedResult: true,
 			description:    "Should return true when certificate has multiple conditions including ready=true",
 		},
 		{
 			name: "certificate_multiple_conditions_ready_false",
-			mockFunc: func(ctx *Context) (*cmv1.Certificate, *corev1.Secret, error) {
-				certificate := createCertificateWithConditions([]cmv1.CertificateCondition{
-					{
-						Type:   cmv1.CertificateConditionIssuing,
-						Status: cmmetav1.ConditionTrue,
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
 					},
-					{
-						Type:   cmv1.CertificateConditionReady,
-						Status: cmmetav1.ConditionFalse,
+					Spec: cmv1.CertificateSpec{
+						SecretName: "test-secret",
 					},
-					{
-						Type:   "CustomCondition",
-						Status: cmmetav1.ConditionTrue,
+					Status: cmv1.CertificateStatus{
+						Conditions: []cmv1.CertificateCondition{
+							{
+								Type:   cmv1.CertificateConditionIssuing,
+								Status: cmmetav1.ConditionTrue,
+							},
+							{
+								Type:   cmv1.CertificateConditionReady,
+								Status: cmmetav1.ConditionFalse,
+							},
+							{
+								Type:   "CustomCondition",
+								Status: cmmetav1.ConditionTrue,
+							},
+						},
 					},
-				})
-				secret := createTestSecret()
-				return certificate, secret, nil
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"tls.crt": []byte("test-cert-data"),
+						"tls.key": []byte("test-key-data"),
+					},
+				},
 			},
 			expectedResult: false,
 			description:    "Should return false when certificate has multiple conditions but ready=false",
+		},
+		{
+			name: "certificate_exists_but_secret_missing",
+			setupObjects: []client.Object{
+				&cmv1.Certificate{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-certificate",
+						Namespace: "test-namespace",
+					},
+					Spec: cmv1.CertificateSpec{
+						SecretName: "missing-secret", // This secret doesn't exist
+					},
+					Status: cmv1.CertificateStatus{
+						Conditions: []cmv1.CertificateCondition{
+							{
+								Type:   cmv1.CertificateConditionReady,
+								Status: cmmetav1.ConditionTrue,
+							},
+						},
+					},
+				},
+				// No secret object - should fail when trying to get the secret
+			},
+			expectedResult: false,
+			description:    "Should return false when certificate exists but referenced secret is missing",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create test context
-			ctx := createTestContext()
+			// Create fake k8s client with test objects
+			scheme := runtime.NewScheme()
+			_ = cmv1.AddToScheme(scheme)
+			_ = corev1.AddToScheme(scheme)
 
-			// Run the test using our test helper that accepts a mock function
-			result := isSubjectReadyForReconciliationWithMock(ctx, tt.mockFunc)
+			fakeClient := fake.NewClientBuilder().
+				WithScheme(scheme).
+				WithObjects(tt.setupObjects...).
+				Build()
+
+			// Create test context with fake K8s client
+			ctx := createTestContext()
+			ctx.Client = &k8sutil.ContextClient{
+				SchemedClient: k8sutil.SchemedClient{
+					Client: fakeClient,
+				},
+				Context:   context.Background(),
+				Namespace: "test-namespace",
+			}
+
+			// Call the actual function under test
+			result := isSubjectReadyForReconciliation(ctx)
 
 			// Check the result
 			if result != tt.expectedResult {
