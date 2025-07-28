@@ -155,8 +155,8 @@ vet:
 test:
 	@echo "Running tests with coverage for internal packages..."
 	go test -v -coverprofile=coverage.out ./internal/...
-	@echo "Coverage by package:"
-	@go tool cover -func=coverage.out
+	@echo "Coverage by package (excluding 100% covered functions):"
+	@go tool cover -func=coverage.out | awk '$$NF != "100.0%" || /^total:/'
 	@echo ""
 	@echo "Total coverage: $$(go tool cover -func=coverage.out | grep total | awk '{print $$3}')"
 
