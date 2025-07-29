@@ -11,6 +11,8 @@ You can think of this operator as the "glue" between your certificate definition
 
 Simply point to the `cert-manager` certificate, and the operator will take care of the rest!
 
+![Architecture Diagram](./docs/architecture.png)
+
 ```yaml
 apiVersion: platform.seatgeek.io/v1alpha1
 kind: FastlyCertificateSync
@@ -105,14 +107,18 @@ helm install fastly-operator seatgeek/fastly-operator \
 
 ### Step 3: Create a Certificate
 
-Please refer to [cert-manager documentation](https://cert-manager.io/docs/) if you aren't familiar with this tool. 
+Please refer to [cert-manager documentation](https://cert-manager.io/docs/) if you aren't familiar with this tool.
 
 First, ensure you have a cert-manager Issuer configured, then create a Certificate:
+
+**Note**: Make sure to annotate your target certificates with `platform.seatgeek.io/enable-fastly-sync: true`! This helps our controller avoid reconciling every single Certificate on the cluster when changes take place. We only want to fully watch and inspect the subset of all Certificates that are being synced to Fastly.
 
 ```yaml
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
+  annotations:
+    platform.seatgeek.io/enable-fastly-sync: true
   name: my-app-cert
   namespace: default
 spec:
@@ -141,7 +147,7 @@ spec:
   certificateName: my-app-cert
   tlsConfigurationIds:
   - "your-fastly-tls-config-id-1"  # Replace with your actual TLS configuration ID
-  - "your-fastly-tls-config-id-2"  # Optional: sync to multiple configurations
+  - "your-fastly-tls-config-id-2"  # Optional: activate against multiple TLS configurations
 ```
 
 > 💡 **Finding TLS Configuration IDs**: You can find these in the Fastly dashboard under Security > TLS Management -> Configurations. These differ from customer to customer so we cannot provide default values here or in the operator.
