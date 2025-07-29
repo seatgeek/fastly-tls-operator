@@ -208,17 +208,9 @@ The operator reports several status conditions:
 - **CertificateReady**: Whether the certificate has been uploaded and is current
 - **CleanupRequired**: Whether old/unused certificates need cleanup
 
-## Security Considerations
-
-- **API Token Storage**: Use Kubernetes secrets or external secret management systems
-- **RBAC**: The operator requires permissions to manage secrets and cert-manager resources
-- **Network Policy**: Consider restricting the operator's network access to only Fastly APIs
-- **Private Key Handling**: Private keys are handled in-memory only and uploaded securely to Fastly
-
 ## Contributing
 
-Please feel free to open
-
+Please feel free to pull requests against this repo!
 
 ## Support
 
