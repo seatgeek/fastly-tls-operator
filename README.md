@@ -37,7 +37,7 @@ This approach doesn't allow you to own your private keys or leverage tls certifi
 
 ### Custom Certificates
 
-Fastly also allows you to define custom, self-defined certificates via their [Custom TLS Certificates API](https://www.fastly.com/documentation/reference/api/tls/custom-certs/).
+Fastly also allows you to define custom, self-managed certificates via their [Custom TLS Certificates API](https://www.fastly.com/documentation/reference/api/tls/custom-certs/).
 
 Although the API is complete, what is lacking is automation tying things together.
 
