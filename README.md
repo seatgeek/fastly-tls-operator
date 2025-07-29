@@ -11,7 +11,7 @@ You can think of this operator as the "glue" between your certificate definition
 
 Simply point to the `cert-manager` certificate, and the operator will take care of the rest!
 
-![Architecture Diagram](./docs/architecture.png)
+![Architecture Diagram](./docs/architecture.jpg)
 
 ```yaml
 apiVersion: platform.seatgeek.io/v1alpha1
