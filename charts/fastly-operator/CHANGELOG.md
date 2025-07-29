@@ -1,4 +1,4 @@
-# Changelog (Docker Image)
+# Changelog (Helm Chart)
 
 All notable changes to this project will be documented in this file.
 
@@ -9,10 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 n/a
 
-## [0.1.0] - 2025-07-29
+## [0.3.0] - 2025-07-29
 
 ### Added
-- Initial release of fastly-operator
-
-[Unreleased]: https://github.com/seatgeek/fastly-operator/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/seatgeek/fastly-operator/releases/tag/v0.1.0
+- Initial release of fastly-operator helm chart
