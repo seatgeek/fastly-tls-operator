@@ -74,7 +74,7 @@ jobs:
           org.opencontainers.image.title=Fastly Operator
           org.opencontainers.image.description=Kubernetes operator for managing Fastly services
           org.opencontainers.image.vendor=SeatGeek
-          org.opencontainers.image.licenses=MIT
+          org.opencontainers.image.licenses=Apache-2.0
 
     - name: Build and push Docker image
       id: build
