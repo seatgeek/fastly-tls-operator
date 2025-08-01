@@ -1,4 +1,4 @@
-# Fastly Operator
+# fastly-operator
 
 [![Build Status](https://github.com/seatgeek/fastly-operator/workflows/CI/badge.svg)](https://github.com/seatgeek/fastly-operator/actions)
 [![Codecov](https://img.shields.io/codecov/c/github/seatgeek/fastly-operator?style=flat-square)](https://codecov.io/gh/seatgeek/fastly-operator)
