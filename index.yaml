@@ -169,4 +169,30 @@ entries:
     urls:
     - https://github.com/seatgeek/fastly-operator/releases/download/fastly-operator-0.1.1/fastly-operator-0.1.1.tgz
     version: 0.1.1
-generated: "2025-07-29T17:20:43.964523349Z"
+  fastly-tls-operator:
+  - apiVersion: v2
+    created: "2025-08-25T19:09:50.941473307Z"
+    description: Helm chart for Fastly TLS Operator - manage Fastly TLS certificates
+      via Kubernetes
+    digest: c9aa7b084d25d41382ae9ac7b86fe9b1a1ed82752a6a75038cf788cfd38f4021
+    home: https://github.com/seatgeek/fastly-tls-operator
+    keywords:
+    - fastly
+    - cdn
+    - tls
+    - certificates
+    - operator
+    - kubernetes
+    - controller
+    maintainers:
+    - email: platform@seatgeek.com
+      name: SeatGeek Platform Team
+      url: https://github.com/seatgeek
+    name: fastly-tls-operator
+    sources:
+    - https://github.com/seatgeek/fastly-tls-operator
+    type: application
+    urls:
+    - https://github.com/seatgeek/fastly-tls-operator/releases/download/fastly-tls-operator-0.1.0/fastly-tls-operator-0.1.0.tgz
+    version: 0.1.0
+generated: "2025-08-25T19:09:50.94149092Z"
