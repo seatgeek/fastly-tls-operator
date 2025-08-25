@@ -1,4 +1,4 @@
-# Default values for fastly-operator.
+# Default values for fastly-tls-operator.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
@@ -7,7 +7,7 @@ replicaCount: 1
 image:
   # Container registry (leave empty for default registry)
   registry: "ghcr.io"
-  repository: seatgeek/fastly-operator
+  repository: seatgeek/fastly-tls-operator
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: "latest"
@@ -49,7 +49,7 @@ securityContext: {}
 fastly:
   # Name of the secret containing the Fastly API key
   # Users are responsible for creating the secret themselves and referring to it here
-  secretName: fastly-operator-secrets
+  secretName: fastly-tls-operator-secrets
   # Key within the secret containing the API key
   secretKey: api-key
 

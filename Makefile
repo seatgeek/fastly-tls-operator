@@ -1,17 +1,17 @@
 # Operator Variables
-BINARY_NAME=fastly-operator
-IMAGE_NAME=fastly-operator
+BINARY_NAME=fastly-tls-operator
+IMAGE_NAME=fastly-tls-operator
 IMAGE_TAG=latest
 KIND_CLUSTER_NAME=fastly-cluster
 KIND_CONTEXT=kind-$(KIND_CLUSTER_NAME)
-OPERATOR_NAME=fastly-operator
+OPERATOR_NAME=fastly-tls-operator
 
 # Namespace Variables
 OPERATOR_NAMESPACE=kube-system  # Where the operator and CA secret are deployed
 TEST_NAMESPACE=fastly-test      # Where test resources (examples) are deployed
 
 # Helm variables
-CHART_PATH=charts/fastly-operator
+CHART_PATH=charts/fastly-tls-operator
 
 # Go build flags
 GOOS=linux
@@ -120,9 +120,9 @@ kind-restart:
 # Internal target to restart deployment (not meant to be called directly)
 _kind-restart-deployment:
 	@echo "Restarting deployment to pick up new image..."
-	kubectl --context $(KIND_CONTEXT) -n $(OPERATOR_NAMESPACE) rollout restart deployment/fastly-operator
+	kubectl --context $(KIND_CONTEXT) -n $(OPERATOR_NAMESPACE) rollout restart deployment/fastly-tls-operator
 	@echo "Waiting for rollout to complete..."
-	kubectl --context $(KIND_CONTEXT) -n $(OPERATOR_NAMESPACE) rollout status deployment/fastly-operator
+	kubectl --context $(KIND_CONTEXT) -n $(OPERATOR_NAMESPACE) rollout status deployment/fastly-tls-operator
 
 # Clean build artifacts
 clean:
@@ -193,7 +193,7 @@ helm-template:
 		echo "Please ensure Phase 1 is complete and the chart has been created."; \
 		exit 1; \
 	fi
-	$(HELM) template fastly-operator $(CHART_PATH) \
+	$(HELM) template fastly-tls-operator $(CHART_PATH) \
 		--set image.repository=$(IMAGE_NAME) \
 		--set image.tag=$(IMAGE_TAG) \
 		--set fastly.secretName=fastly-secret
@@ -211,7 +211,7 @@ helm-test:
 	@echo "Checking values.yaml syntax..."
 	@$(HELM) show values $(CHART_PATH) > /dev/null
 	@echo "Checking template rendering (dry-run)..."
-	@$(HELM) template fastly-operator $(CHART_PATH) \
+	@$(HELM) template fastly-tls-operator $(CHART_PATH) \
 		--set image.repository=$(IMAGE_NAME) \
 		--set image.tag=$(IMAGE_TAG) \
 		--set fastly.secretName=fastly-secret \
@@ -251,9 +251,9 @@ generate: controller-gen
 manifests: controller-gen
 	$(CONTROLLER_GEN) rbac:roleName=$(OPERATOR_NAME) crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases output:webhook:dir=config/operator/webhook
 	@echo "Syncing CRDs to Helm chart..."
-	@mkdir -p charts/fastly-operator/crds
-	@cp config/crd/bases/*.yaml charts/fastly-operator/crds/
-	@mv charts/fastly-operator/crds/platform.seatgeek.io_fastlycertificatesyncs.yaml charts/fastly-operator/crds/fastlycertificatesyncs.platform.seatgeek.io.yaml
+	@mkdir -p charts/fastly-tls-operator/crds
+	@cp config/crd/bases/*.yaml charts/fastly-tls-operator/crds/
+	@mv charts/fastly-tls-operator/crds/platform.seatgeek.io_fastlycertificatesyncs.yaml charts/fastly-tls-operator/crds/fastlycertificatesyncs.platform.seatgeek.io.yaml
 
 # Download kustomize locally if necessary
 kustomize: $(KUSTOMIZE)

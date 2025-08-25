@@ -12,4 +12,4 @@ n/a
 ## [0.3.0] - 2025-07-29
 
 ### Added
-- Initial release of fastly-operator helm chart
+- Initial release of fastly-tls-operator helm chart

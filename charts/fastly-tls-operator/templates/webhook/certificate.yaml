@@ -1,0 +1,19 @@
+{{- if and .Values.webhook.enabled .Values.webhook.certManager.enabled -}}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "fastly-tls-operator.fullname" . }}-webhook
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "fastly-tls-operator.labels" . | nindent 4 }}
+spec:
+  secretName: {{ include "fastly-tls-operator.fullname" . }}-webhook-tls
+  duration: {{ .Values.webhook.certManager.duration }}
+  renewBefore: {{ .Values.webhook.certManager.renewBefore }}
+  issuerRef:
+    kind: Issuer
+    name: {{ include "fastly-tls-operator.fullname" . }}-webhook-ca
+  dnsNames:
+  - {{ include "fastly-tls-operator.fullname" . }}-webhook.{{ .Release.Namespace }}.svc
+  - {{ include "fastly-tls-operator.fullname" . }}-webhook.{{ .Release.Namespace }}.svc.cluster.local
+{{- end }} 

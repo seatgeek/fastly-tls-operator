@@ -7,7 +7,7 @@ import (
 	"time"
 
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
-	"github.com/fastly-operator/api/v1alpha1"
+	"github.com/fastly-tls-operator/api/v1alpha1"
 	"github.com/fastly/go-fastly/v11/fastly"
 	"github.com/seatgeek/k8s-reconciler-generic/pkg/k8sutil"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -28,7 +28,7 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	"github.com/fastly-operator/internal/reconciler/fastlycertificatesync"
+	"github.com/fastly-tls-operator/internal/reconciler/fastlycertificatesync"
 	"github.com/seatgeek/k8s-reconciler-generic/pkg/genrec"
 )
 
@@ -75,7 +75,7 @@ func main() {
 		metricsAddr:          ":8080",
 		probeAddr:            ":8081",
 		enableLeaderElection: true,
-		leaderElectionID:     "fastly-operator-leader-election",
+		leaderElectionID:     "fastly-tls-operator-leader-election",
 		syncPeriod:           4 * time.Hour,
 		webhookPort:          9443,
 		webhookCertDir:       "/var/run/webhook-serving-certs",
@@ -91,7 +91,7 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zapOpts)))
 
-	setupLog.Info("initializing", "cluster", "fastly-operator")
+	setupLog.Info("initializing", "cluster", "fastly-tls-operator")
 
 	config, err := kconf.GetConfig()
 	if err != nil {
@@ -155,7 +155,7 @@ func main() {
 				return client
 			}(),
 		},
-		Recorder:     mgr.GetEventRecorderFor("fastly-operator"),
+		Recorder:     mgr.GetEventRecorderFor("fastly-tls-operator"),
 		Client:       sc,
 		KeyNamespace: "platform.seatgeek.io",
 	}).SetupWithManager(mgr); err != nil {

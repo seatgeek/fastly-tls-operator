@@ -3,7 +3,7 @@ package fastlycertificatesync
 import (
 	"testing"
 
-	"github.com/fastly-operator/api/v1alpha1"
+	"github.com/fastly-tls-operator/api/v1alpha1"
 	"github.com/fastly/go-fastly/v11/fastly"
 	"github.com/go-logr/logr"
 	"github.com/seatgeek/k8s-reconciler-generic/apiobjects"

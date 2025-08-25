@@ -1,7 +1,7 @@
-# fastly-operator
+# fastly-tls-operator
 
-[![Build Status](https://github.com/seatgeek/fastly-operator/workflows/CI/badge.svg)](https://github.com/seatgeek/fastly-operator/actions)
-[![Codecov](https://img.shields.io/codecov/c/github/seatgeek/fastly-operator?style=flat-square)](https://codecov.io/gh/seatgeek/fastly-operator)
+[![Build Status](https://github.com/seatgeek/fastly-tls-operator/workflows/CI/badge.svg)](https://github.com/seatgeek/fastly-tls-operator/actions)
+[![Codecov](https://img.shields.io/codecov/c/github/seatgeek/fastly-tls-operator?style=flat-square)](https://codecov.io/gh/seatgeek/fastly-tls-operator)
 
 A Kubernetes operator that powers Fastly TLS automation.
 
@@ -86,7 +86,7 @@ This guide should get you up and running with an example certificate.
 Create a Kubernetes secret with your Fastly API token:
 
 ```bash
-kubectl create secret generic fastly-operator-secrets \
+kubectl create secret generic fastly-tls-operator-secrets \
   --from-literal=api-key="YOUR_FASTLY_API_TOKEN" \
   --namespace=fastly-system
 ```
@@ -101,7 +101,7 @@ helm repo add seatgeek https://seatgeek.github.io/charts
 helm repo update
 
 # Install the operator
-helm install fastly-operator seatgeek/fastly-operator \
+helm install fastly-tls-operator seatgeek/fastly-tls-operator \
   --namespace fastly-system
 ```
 
@@ -161,7 +161,7 @@ Check the status of your certificate sync:
 kubectl get fastlycertificatesync my-app-cert-sync -o yaml
 
 # Check operator logs
-kubectl logs -n kube-system deployment/fastly-operator
+kubectl logs -n kube-system deployment/fastly-tls-operator
 ```
 
 The `FastlyCertificateSync` resource will show status conditions indicating whether the certificate has been successfully uploaded and configured in Fastly.
@@ -179,8 +179,8 @@ Our `makefile` setup has some high level commands that will bootstrap everything
 
 ```bash
 # Clone the repository
-git clone https://github.com/seatgeek/fastly-operator.git
-cd fastly-operator
+git clone https://github.com/seatgeek/fastly-tls-operator.git
+cd fastly-tls-operator
 
 # Create a local kind cluster and deploy the operator
 make kind-deploy
@@ -216,4 +216,4 @@ Please feel free to pull requests against this repo!
 
 For issues and questions:
 
-- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/seatgeek/fastly-operator/issues)
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/seatgeek/fastly-tls-operator/issues)

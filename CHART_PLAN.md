@@ -14,7 +14,7 @@ This document outlines the plan for hosting the Fastly Operator Helm chart on Gi
 
 ## Current State
 
-✅ **Helm Chart**: Ready in `charts/fastly-operator/` (v0.1.0)  
+✅ **Helm Chart**: Ready in `charts/fastly-tls-operator/` (v0.1.0)  
 ✅ **Docker Build**: Working Dockerfile with multi-stage build  
 ✅ **Local Testing**: Makefile targets for validation  
 ❌ **GitHub Actions**: Not configured  
@@ -31,7 +31,7 @@ This document outlines the plan for hosting the Fastly Operator Helm chart on Gi
 - [ ] Set up vulnerability scanning
 
 **Deliverables:**
-- Docker images published to `ghcr.io/seatgeek/fastly-operator`
+- Docker images published to `ghcr.io/seatgeek/fastly-tls-operator`
 - Multi-architecture support
 - Signed and scanned container images
 
@@ -55,8 +55,8 @@ This document outlines the plan for hosting the Fastly Operator Helm chart on Gi
 - [ ] Test chart installation from GitHub Pages
 
 **Deliverables:**
-- Live Helm repository at `https://seatgeek.github.io/fastly-operator/`
-- Chart installable via `helm repo add fastly-operator https://seatgeek.github.io/fastly-operator/`
+- Live Helm repository at `https://seatgeek.github.io/fastly-tls-operator/`
+- Chart installable via `helm repo add fastly-tls-operator https://seatgeek.github.io/fastly-tls-operator/`
 
 ### 2.2 Chart Packaging and Indexing
 - [ ] Create `scripts/package-chart.sh` for chart packaging
@@ -144,7 +144,7 @@ jobs:
 - [ ] Create release notes templates
 
 **Version Strategy:**
-- **Docker Image**: `ghcr.io/seatgeek/fastly-operator:v1.0.0`
+- **Docker Image**: `ghcr.io/seatgeek/fastly-tls-operator:v1.0.0`
 - **Helm Chart**: `version: 1.0.0, appVersion: "1.0.0"`
 - **Git Tag**: `v1.0.0`
 
@@ -216,8 +216,8 @@ jobs:
 - [ ] Security scanning and signing implemented
 
 ### User Success
-- [ ] Simple installation: `helm repo add fastly-operator https://seatgeek.github.io/fastly-operator/`
-- [ ] Easy image access: `docker pull ghcr.io/seatgeek/fastly-operator:latest`
+- [ ] Simple installation: `helm repo add fastly-tls-operator https://seatgeek.github.io/fastly-tls-operator/`
+- [ ] Easy image access: `docker pull ghcr.io/seatgeek/fastly-tls-operator:latest`
 - [ ] Clear documentation and examples
 - [ ] Reliable release process
 
@@ -230,13 +230,13 @@ jobs:
 ## File Structure (Post-Implementation)
 
 ```
-fastly-operator/
+fastly-tls-operator/
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml           # Development CI pipeline
 │       └── release.yml      # Release automation
 ├── charts/
-│   └── fastly-operator/     # Existing Helm chart
+│   └── fastly-tls-operator/     # Existing Helm chart
 ├── scripts/
 │   ├── package-chart.sh     # Chart packaging
 │   └── build-multiarch.sh   # Multi-arch Docker builds
@@ -258,17 +258,17 @@ fastly-operator/
 
 ```bash
 # Add Helm repository
-helm repo add fastly-operator https://seatgeek.github.io/fastly-operator/
+helm repo add fastly-tls-operator https://seatgeek.github.io/fastly-tls-operator/
 helm repo update
 
 # Install the operator
-helm install fastly-operator fastly-operator/fastly-operator
+helm install fastly-tls-operator fastly-tls-operator/fastly-tls-operator
 
 # Pull Docker image
-docker pull ghcr.io/seatgeek/fastly-operator:latest
+docker pull ghcr.io/seatgeek/fastly-tls-operator:latest
 
 # Check available versions
-helm search repo fastly-operator --versions
+helm search repo fastly-tls-operator --versions
 ```
 
 This plan focuses exclusively on publishing and distribution, leveraging GitHub's built-in capabilities for hosting both container images and Helm charts. 

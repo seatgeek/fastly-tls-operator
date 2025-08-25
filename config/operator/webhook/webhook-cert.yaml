@@ -1,7 +1,7 @@
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
-  name: fastly-operator-webhook-ca
+  name: fastly-tls-operator-webhook-ca
   namespace: kube-system
 spec:
   selfSigned: {}
@@ -9,13 +9,13 @@ spec:
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: fastly-operator-webhook
+  name: fastly-tls-operator-webhook
   namespace: kube-system
 spec:
-  secretName: fastly-operator-webhook-tls
+  secretName: fastly-tls-operator-webhook-tls
   issuerRef:
     kind: Issuer
-    name: fastly-operator-webhook-ca
+    name: fastly-tls-operator-webhook-ca
   dnsNames:
-  - fastly-operator-admission.kube-system.svc
-  - fastly-operator-admission.kube-system.svc.cluster.local 
+  - fastly-tls-operator-admission.kube-system.svc
+  - fastly-tls-operator-admission.kube-system.svc.cluster.local 

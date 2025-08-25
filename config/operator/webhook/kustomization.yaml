@@ -9,7 +9,7 @@ resources:
 - manifests.yaml
 
 commonAnnotations:
-  cert-manager.io/inject-ca-from: kube-system/fastly-operator-webhook
+  cert-manager.io/inject-ca-from: kube-system/fastly-tls-operator-webhook
 
 patches:
 - target:
@@ -19,10 +19,10 @@ patches:
   patch: |
     - op: replace
       path: /metadata/name
-      value: fastly-operator
+      value: fastly-tls-operator
     - op: replace
       path: /webhooks/0/clientConfig/service/name
-      value: fastly-operator-admission
+      value: fastly-tls-operator-admission
     - op: replace
       path: /webhooks/0/clientConfig/service/namespace
       value: kube-system
@@ -36,10 +36,10 @@ patches:
   patch: |
     - op: replace
       path: /metadata/name
-      value: fastly-operator
+      value: fastly-tls-operator
     - op: replace
       path: /webhooks/0/clientConfig/service/name
-      value: fastly-operator-admission
+      value: fastly-tls-operator-admission
     - op: replace
       path: /webhooks/0/clientConfig/service/namespace
       value: kube-system

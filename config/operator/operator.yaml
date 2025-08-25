@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: fastly-operator
+  name: fastly-tls-operator
   namespace: kube-system
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: fastly-operator
+      app.kubernetes.io/name: fastly-tls-operator
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: fastly-operator
+        app.kubernetes.io/name: fastly-tls-operator
     spec:
-      serviceAccountName: fastly-operator
+      serviceAccountName: fastly-tls-operator
       securityContext:
         runAsUser: 65532
         runAsNonRoot: true
@@ -22,10 +22,10 @@ spec:
       volumes:
       - name: webhook-tls
         secret:
-          secretName: fastly-operator-webhook-tls
+          secretName: fastly-tls-operator-webhook-tls
       containers:
       - name: operator
-        image: fastly-operator:latest
+        image: fastly-tls-operator:latest
         imagePullPolicy: IfNotPresent
         env:
         - name: FASTLY_API_KEY

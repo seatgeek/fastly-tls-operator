@@ -1,12 +1,12 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: fastly-operator
+  name: fastly-tls-operator
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: fastly-operator
+  name: fastly-tls-operator
 subjects:
 - kind: ServiceAccount
-  name: fastly-operator
+  name: fastly-tls-operator
   namespace: kube-system

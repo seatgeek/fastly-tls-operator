@@ -1,4 +1,4 @@
-module github.com/fastly-operator
+module github.com/fastly-tls-operator
 
 go 1.24.0
 

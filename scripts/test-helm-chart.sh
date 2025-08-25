@@ -6,15 +6,15 @@
 set -e
 
 # Configuration variables (using separate cluster for Helm testing)
-BINARY_NAME="fastly-operator"
-IMAGE_NAME="fastly-operator"
+BINARY_NAME="fastly-tls-operator"
+IMAGE_NAME="fastly-tls-operator"
 IMAGE_TAG="latest"
 KIND_CLUSTER_NAME="fastly-cluster"
 KIND_CONTEXT="kind-${KIND_CLUSTER_NAME}"
-OPERATOR_NAME="fastly-operator"
-CHART_PATH="charts/fastly-operator"
+OPERATOR_NAME="fastly-tls-operator"
+CHART_PATH="charts/fastly-tls-operator"
 CHART_INSTALL_NAMESPACE="kube-system"
-RELEASE_NAME="fastly-operator"
+RELEASE_NAME="fastly-tls-operator"
 
 # Helper functions
 log_info() {
@@ -213,21 +213,21 @@ validate_installation() {
     
     # Check if the deployment is ready
     log_info "Checking deployment status..."
-    kubectl --context="${KIND_CONTEXT}" -n "${CHART_INSTALL_NAMESPACE}" rollout status deployment/fastly-operator --timeout=300s
+    kubectl --context="${KIND_CONTEXT}" -n "${CHART_INSTALL_NAMESPACE}" rollout status deployment/fastly-tls-operator --timeout=300s
     
     # Check if pods are running
     log_info "Checking pod status..."
-    local pod_count=$(kubectl --context="${KIND_CONTEXT}" -n "${CHART_INSTALL_NAMESPACE}" get pods -l app.kubernetes.io/name=fastly-operator --field-selector=status.phase=Running --no-headers | wc -l)
+    local pod_count=$(kubectl --context="${KIND_CONTEXT}" -n "${CHART_INSTALL_NAMESPACE}" get pods -l app.kubernetes.io/name=fastly-tls-operator --field-selector=status.phase=Running --no-headers | wc -l)
     
     if [ "${pod_count}" -eq 0 ]; then
-        log_error "No running pods found for fastly-operator."
+        log_error "No running pods found for fastly-tls-operator."
         log_error "Pod details:"
-        kubectl --context="${KIND_CONTEXT}" -n "${CHART_INSTALL_NAMESPACE}" get pods -l app.kubernetes.io/name=fastly-operator
-        kubectl --context="${KIND_CONTEXT}" -n "${CHART_INSTALL_NAMESPACE}" describe pods -l app.kubernetes.io/name=fastly-operator
+        kubectl --context="${KIND_CONTEXT}" -n "${CHART_INSTALL_NAMESPACE}" get pods -l app.kubernetes.io/name=fastly-tls-operator
+        kubectl --context="${KIND_CONTEXT}" -n "${CHART_INSTALL_NAMESPACE}" describe pods -l app.kubernetes.io/name=fastly-tls-operator
         return 1
     fi
     
-    log_info "Found ${pod_count} running pod(s) for fastly-operator."
+    log_info "Found ${pod_count} running pod(s) for fastly-tls-operator."
     
     # Check if CRDs are installed
     log_info "Checking CRD installation..."
@@ -240,7 +240,7 @@ validate_installation() {
     
     # Check webhook configuration
     log_info "Checking webhook configuration..."
-    if ! kubectl --context="${KIND_CONTEXT}" get validatingwebhookconfiguration fastly-operator-webhook >/dev/null 2>&1; then
+    if ! kubectl --context="${KIND_CONTEXT}" get validatingwebhookconfiguration fastly-tls-operator-webhook >/dev/null 2>&1; then
         log_warn "ValidatingWebhookConfiguration not found (this might be expected in some configurations)."
     else
         log_info "ValidatingWebhookConfiguration found."
@@ -274,9 +274,9 @@ show_installation_info() {
     
     log_info "Useful commands:"
     echo "  View pods:       kubectl --context=${KIND_CONTEXT} -n ${CHART_INSTALL_NAMESPACE} get pods"
-    echo "  View logs:       kubectl --context=${KIND_CONTEXT} -n ${CHART_INSTALL_NAMESPACE} logs -l app.kubernetes.io/name=fastly-operator"
+    echo "  View logs:       kubectl --context=${KIND_CONTEXT} -n ${CHART_INSTALL_NAMESPACE} logs -l app.kubernetes.io/name=fastly-tls-operator"
     echo "  View helm status: helm status ${RELEASE_NAME} --kube-context=${KIND_CONTEXT} -n ${CHART_INSTALL_NAMESPACE}"
-    echo "  Port forward:    kubectl --context=${KIND_CONTEXT} -n ${CHART_INSTALL_NAMESPACE} port-forward svc/fastly-operator 8080:8080"
+    echo "  Port forward:    kubectl --context=${KIND_CONTEXT} -n ${CHART_INSTALL_NAMESPACE} port-forward svc/fastly-tls-operator 8080:8080"
     echo ""
 }
 
@@ -297,7 +297,7 @@ main() {
     
     # Check if we're in the right directory
     if [ ! -f "go.mod" ] || [ ! -d "cmd" ]; then
-        log_error "This script must be run from the fastly-operator root directory."
+        log_error "This script must be run from the fastly-tls-operator root directory."
         exit 1
     fi
     
@@ -314,7 +314,7 @@ main() {
     show_installation_info
     
     log_info "Helm chart test completed successfully!"
-    log_info "The fastly-operator is now running in your kind cluster."
+    log_info "The fastly-tls-operator is now running in your kind cluster."
     log_info "Use 'kind delete cluster --name ${KIND_CLUSTER_NAME}' to clean up the test cluster."
 }
 

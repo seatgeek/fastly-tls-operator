@@ -8,8 +8,8 @@ set -e
 echo "🚀 Setting up GitHub Pages for Helm chart repository..."
 
 # Check if we're in the right directory
-if [ ! -f "charts/fastly-operator/Chart.yaml" ]; then
-    echo "❌ Error: Must be run from the fastly-operator project root"
+if [ ! -f "charts/fastly-tls-operator/Chart.yaml" ]; then
+    echo "❌ Error: Must be run from the fastly-tls-operator project root"
     exit 1
 fi
 
@@ -47,15 +47,15 @@ else
         <h2>📦 Installation</h2>
         
         <p>Add the Helm repository:</p>
-        <pre><code>helm repo add fastly-operator https://seatgeek.github.io/fastly-operator/
+        <pre><code>helm repo add fastly-tls-operator https://seatgeek.github.io/fastly-tls-operator/
 helm repo update</code></pre>
         
         <p>Install the Fastly Operator:</p>
-        <pre><code>helm install fastly-operator fastly-operator/fastly-operator</code></pre>
+        <pre><code>helm install fastly-tls-operator fastly-tls-operator/fastly-tls-operator</code></pre>
         
         <h2>🔗 Links</h2>
         <ul>
-            <li><a href="https://github.com/seatgeek/fastly-operator">GitHub Repository</a></li>
+            <li><a href="https://github.com/seatgeek/fastly-tls-operator">GitHub Repository</a></li>
             <li><a href="index.yaml">Helm Repository Index</a></li>
         </ul>
         
@@ -90,4 +90,4 @@ echo "1. Push the gh-pages branch: git push origin gh-pages"
 echo "2. Enable GitHub Pages in repository settings"
 echo "3. Set source to 'gh-pages' branch"
 echo "4. Your Helm repository will be available at:"
-echo "   https://seatgeek.github.io/fastly-operator/" 
+echo "   https://seatgeek.github.io/fastly-tls-operator/" 

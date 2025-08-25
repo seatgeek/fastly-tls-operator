@@ -7,7 +7,7 @@ import (
 	"time"
 
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
-	"github.com/fastly-operator/api/v1alpha1"
+	"github.com/fastly-tls-operator/api/v1alpha1"
 	"github.com/fastly/go-fastly/v11/fastly"
 	"github.com/seatgeek/k8s-reconciler-generic/pkg/genrec"
 	rm "github.com/seatgeek/k8s-reconciler-generic/pkg/resourcemanager"
@@ -100,7 +100,7 @@ func (l *Logic) ResourceIssues(_ client.Object) (facts []string) {
 
 func (l *Logic) ExtraLabelsForObject(context *Context, tier, suffix string) map[string]string {
 	return map[string]string{
-		"app.kubernetes.io/managed-by": "fastly-operator",
+		"app.kubernetes.io/managed-by": "fastly-tls-operator",
 	}
 }
 

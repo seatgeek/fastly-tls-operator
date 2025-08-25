@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: fastly-operator-admission
+  name: fastly-tls-operator-admission
   namespace: kube-system
 spec:
   selector:
-    app.kubernetes.io/name: fastly-operator
+    app.kubernetes.io/name: fastly-tls-operator
   type: ClusterIP
   ports:
   - port: 443

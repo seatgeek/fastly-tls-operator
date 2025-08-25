@@ -8,9 +8,9 @@ resources:
 - webhook/
 
 images:
-- name: fastly-operator
-  newName: fastly-operator
+- name: fastly-tls-operator
+  newName: fastly-tls-operator
   newTag: latest
 
 commonAnnotations:
-  app.kubernetes.io/name: fastly-operator 
+  app.kubernetes.io/name: fastly-tls-operator 

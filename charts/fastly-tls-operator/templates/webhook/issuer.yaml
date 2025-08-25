@@ -2,10 +2,10 @@
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
-  name: {{ include "fastly-operator.fullname" . }}-webhook-ca
+  name: {{ include "fastly-tls-operator.fullname" . }}-webhook-ca
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "fastly-operator.labels" . | nindent 4 }}
+    {{- include "fastly-tls-operator.labels" . | nindent 4 }}
 spec:
   selfSigned: {}
 {{- end }} 

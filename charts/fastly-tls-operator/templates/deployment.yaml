@@ -1,15 +1,15 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "fastly-operator.fullname" . }}
+  name: {{ include "fastly-tls-operator.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "fastly-operator.labels" . | nindent 4 }}
+    {{- include "fastly-tls-operator.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      {{- include "fastly-operator.selectorLabels" . | nindent 6 }}
+      {{- include "fastly-tls-operator.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       {{- with .Values.annotations }}
@@ -17,21 +17,21 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "fastly-operator.selectorLabels" . | nindent 8 }}
+        {{- include "fastly-tls-operator.selectorLabels" . | nindent 8 }}
         {{- with .Values.labels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
-      serviceAccountName: {{ include "fastly-operator.serviceAccountName" . }}
+      serviceAccountName: {{ include "fastly-tls-operator.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       volumes:
       - name: webhook-tls
         secret:
-          secretName: {{ include "fastly-operator.fullname" . }}-webhook-tls
+          secretName: {{ include "fastly-tls-operator.fullname" . }}-webhook-tls
       containers:
       - name: operator
-        image: "{{ include "fastly-operator.image" . }}"
+        image: "{{ include "fastly-tls-operator.image" . }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         env:
         - name: FASTLY_API_KEY
