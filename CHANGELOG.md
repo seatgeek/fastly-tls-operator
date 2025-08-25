@@ -9,10 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 n/a
 
-## [0.1.0] - 2025-07-29
+## [0.1.0] - 2025-08-25
 
 ### Added
-- Initial release of fastly-tls-operator
 
-[Unreleased]: https://github.com/seatgeek/fastly-tls-operator/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/seatgeek/fastly-tls-operator/releases/tag/v0.1.0
+- Initial release of `fastly-tls-operator`
