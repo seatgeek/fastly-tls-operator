@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Fastly Operator Helm Chart Testing Script
+# Fastly TLS Operator Helm Chart Testing Script
 # This script creates the 'fastly-cluster' kind cluster, installs cert-manager, and deploys the Helm chart in kube-system for testing
 
 set -e
@@ -290,7 +290,7 @@ cleanup() {
 
 # Main function
 main() {
-    log_info "Starting Fastly Operator Helm Chart Test..."
+    log_info "Starting Fastly TLS Operator Helm Chart Test..."
     
     # Set up cleanup on exit
     trap cleanup EXIT

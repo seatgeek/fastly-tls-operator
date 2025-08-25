@@ -30,7 +30,7 @@ else
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Fastly Operator Helm Repository</title>
+    <title>Fastly TLS Operator Helm Repository</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 2rem; }
         .container { max-width: 800px; margin: 0 auto; }
@@ -40,9 +40,9 @@ else
 </head>
 <body>
     <div class="container">
-        <h1>🚀 Fastly Operator Helm Repository</h1>
+        <h1>🚀 Fastly TLS Operator Helm Repository</h1>
         
-        <p>This repository hosts the Helm chart for the Fastly Operator.</p>
+        <p>This repository hosts the Helm chart for the Fastly TLS Operator.</p>
         
         <h2>📦 Installation</h2>
         
@@ -50,7 +50,7 @@ else
         <pre><code>helm repo add fastly-tls-operator https://seatgeek.github.io/fastly-tls-operator/
 helm repo update</code></pre>
         
-        <p>Install the Fastly Operator:</p>
+        <p>Install the Fastly TLS Operator:</p>
         <pre><code>helm install fastly-tls-operator fastly-tls-operator/fastly-tls-operator</code></pre>
         
         <h2>🔗 Links</h2>

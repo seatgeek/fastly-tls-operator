@@ -45,7 +45,7 @@ This operator bridges that gap by building the necessary automation for you!
 
 ### Cert-Manager
 
-[cert-manager](https://cert-manager.io/) is the canonical k8s native solution for managing certificates. Fastly-Operator builds on top of this familiar solution without reinventing how certificates in k8s are managed.
+[cert-manager](https://cert-manager.io/) is the canonical k8s native solution for managing certificates. Fastly TLS Operator builds on top of this familiar solution without reinventing how certificates in k8s are managed.
 
 ## How it Works
 

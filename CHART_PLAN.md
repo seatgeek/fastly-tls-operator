@@ -1,8 +1,8 @@
-# Fastly Operator - GitHub Publishing & Container Build Plan
+# Fastly TLS Operator - GitHub Publishing & Container Build Plan
 
 ## Overview
 
-This document outlines the plan for hosting the Fastly Operator Helm chart on GitHub Pages and building/publishing Docker images to GitHub Container Registry (GHCR). The chart is already functional and ready for distribution.
+This document outlines the plan for hosting the Fastly TLS Operator Helm chart on GitHub Pages and building/publishing Docker images to GitHub Container Registry (GHCR). The chart is already functional and ready for distribution.
 
 ## Goals
 
