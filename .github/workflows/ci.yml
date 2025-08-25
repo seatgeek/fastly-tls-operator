@@ -9,7 +9,7 @@ on:
 env:
   GO_VERSION: "1.24"
   REGISTRY: ghcr.io/seatgeek
-  IMAGE_NAME: fastly-operator
+  IMAGE_NAME: fastly-tls-operator
 
 jobs:
   test:
@@ -121,11 +121,11 @@ jobs:
         version: 'v3.13.0'
 
     - name: Lint Helm chart
-      run: helm lint charts/fastly-operator
+      run: helm lint charts/fastly-tls-operator
 
     - name: Template Helm chart
       run: |
-        helm template fastly-operator charts/fastly-operator \
+        helm template fastly-tls-operator charts/fastly-tls-operator \
           --set image.repository=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }} \
           --set image.tag=test \
           --set fastly.secretName=fastly-secret \
@@ -133,8 +133,8 @@ jobs:
 
     - name: Validate Helm chart
       run: |
-        helm show chart charts/fastly-operator > /dev/null
-        helm show values charts/fastly-operator > /dev/null
+        helm show chart charts/fastly-tls-operator > /dev/null
+        helm show values charts/fastly-tls-operator > /dev/null
 
   security:
     runs-on: ubuntu-latest
