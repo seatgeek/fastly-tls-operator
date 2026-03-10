@@ -107,7 +107,7 @@ kind-install-dependencies:
 
 
 # Deploy to kind cluster and restart (depends on kind-load)
-kind-deploy: kind-load kind-install-dependencies
+kind-deploy: kind-load kind-install-dependencies kustomize
 	@echo "Deploying to kind cluster..."
 	$(KUSTOMIZE) build config/ | $(KUBECTL) apply -f -
 	@$(MAKE) _kind-restart-deployment
@@ -292,3 +292,4 @@ apply-examples: install test-namespace
 	$(KUBECTL) -n $(TEST_NAMESPACE)apply -f hack/fastlycertificatesync/issuer.yaml
 	@echo "Applying example resources to '$(TEST_NAMESPACE)' namespace..."
 	$(KUBECTL) -n $(TEST_NAMESPACE) apply -f hack/fastlycertificatesync/example.yaml
+	$(KUBECTL) -n $(TEST_NAMESPACE) apply -f hack/fastlycertificatesync/example-ecdsa.yaml

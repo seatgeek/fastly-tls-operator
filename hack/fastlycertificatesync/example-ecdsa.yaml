@@ -1,0 +1,34 @@
+apiVersion: platform.seatgeek.io/v1alpha1
+kind: FastlyCertificateSync
+metadata:
+  name: example-ecdsa
+spec:
+  suspend: false
+  certificateName: example-ecdsa
+  tlsConfigurationIds:
+  - "FvmqG3m7zgnbyw2PBTzxHw" # (HTTP/3 & TLS v1.3) - configuration IDs are account specific, usage in other accounts will need to change this
+  - "aDDySyCAF3iZzH4ZXW2dEA" # (HTTP/3 & TLS v1.3 + 0RTT) - configuration IDs are account specific, usage in other accounts will need to change this
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: example-ecdsa
+  annotations:
+    platform.seatgeek.io/enable-fastly-sync: "true"
+spec:
+  commonName: example-ecdsa.com
+  secretName: example-ecdsa-tls
+  isCA: false
+  duration: 1h
+  renewBefore: 5m
+  usages:
+    - server auth
+  issuerRef:
+    kind: Issuer
+    name: local-ca-issuer
+  privateKey:
+    rotationPolicy: Always
+    algorithm: ECDSA
+  dnsNames:
+  - "example-ecdsa.com"
+  - "*.example-ecdsa.com"
