@@ -155,7 +155,6 @@ func (l *Logic) ConfigureController(cb *builder.Builder, cluster cluster.Cluster
 }
 
 func (l *Logic) Reconcile(ctx *Context) (ctrl.Result, error) {
-
 	// The actual reconciliation takes place in `ObserveResources` and `ApplyUnmanaged`
 	ctx.Log.Info("reconciling FastlyCertificateSync", "name", ctx.Subject.Name, "namespace", ctx.Subject.Namespace)
 
