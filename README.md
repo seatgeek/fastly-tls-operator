@@ -208,6 +208,16 @@ The operator reports several status conditions:
 - **CertificateReady**: Whether the certificate has been uploaded and is current
 - **CleanupRequired**: Whether old/unused certificates need cleanup
 
+## Known Limitations
+
+You may use the following `spec.privateKey.algorithm` values in your certificate:
+
+* RSA
+* ECDSA
+
+**Note** Fastly doesn't support the `Ed25519` algorithm, so even though it is allowed by the Certificate, our operator will error when attempting to upload this to Fastly.
+
+
 ## Contributing
 
 Please feel free to pull requests against this repo!

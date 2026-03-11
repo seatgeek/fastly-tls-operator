@@ -989,7 +989,7 @@ BzFGN9BUetq4xCX0RQjOgwutEVAQg+zqSwRzW0eQsNuWQBX0qFlNQSxtE5/Bt0mr
 HmXIj2hYA9/AQJ4BywIDAQAB
 -----END PUBLIC KEY-----`,
 			expectError:   true,
-			errorContains: "failed to parse RSA private key",
+			errorContains: "unsupported PEM block type",
 		},
 		{
 			name: "wrong_pem_block_type_certificate",
@@ -1005,7 +1005,7 @@ sQm4Yc8RzM2N7VjK6Qp8Lf4XzWbQc5T1dYv8Mx6K9R7VzF3J4H8XwYpQ5D2BZ9Lz
 KwIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQABCDEFGHIJKLMNOPQRSTUVWXYZabcd
 -----END CERTIFICATE-----`,
 			expectError:   true,
-			errorContains: "failed to parse RSA private key",
+			errorContains: "unsupported PEM block type",
 		},
 		{
 			name: "multiple_pem_blocks_should_use_first",
@@ -1081,6 +1081,104 @@ EVAQg+zqSwRzW0eQsNuWQBX0qFlNQSxtE5/Bt0mr9Vh5VTePHAj+kLqAWYwzpRK/
 -----END RSA PRIVATE KEY-----`,
 			expectError:   true,
 			errorContains: "failed to parse RSA private key",
+		},
+		// ECDSA keys (cert-manager with spec.privateKey.algorithm: ECDSA uses PKCS#8 by default; EC PRIVATE KEY is also common).
+		{
+			name: "ecdsa_p256_pkcs8_cert_manager_style",
+			privateKeyPEM: `-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg1BHrrviRkwfckazz
+wCfHeqhd57mDfD1jthnAwRUGdbChRANCAASlvsF/TZPjErMbhXMIxoq+K4NAeCxU
+GqfQFtGD3+TPBDj3t7987+QL1AQOgSqlXq5uikIHr4xPWd9hMlHtJyTj
+-----END PRIVATE KEY-----`,
+			expectedSHA1: "41d8facdee03657cecdf818a264df43fe929ec04",
+		},
+		// RSA with PKCS#8 encoding (cert-manager spec.privateKey.encoding: PKCS8); hits "PRIVATE KEY" case.
+		{
+			name: "rsa_2048_pkcs8",
+			privateKeyPEM: `-----BEGIN PRIVATE KEY-----
+MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCvgq21mWGkTdj1
+U0kYZui+wNKfmxoVgwS35dLqFYgjP8tIUsMpcZGxD5SXF++PUD0dESqCKYkEr/L7
+xhp4MOCfPgabJdPke+nCCQRzAV5qy3a+3N+xa9Cu61szEVyqj3YRCvF3bblKeiHC
+y+oHhjdM9Ynof1q5jp1hxem+ymZTkWU/QbOJurBe8pQpCjDpcb76fvdJua+cKwAn
+tXibiP+LBmVt3jN1MZuvm5hq3AlCSQQmxw8foLLDP5ltmJwerl+U+/h9UzEPyLSX
+DIZrxCh0GG4g+ARvVSZDcJyapxRLoqJKba8Hd4bAJuh6G/GRMW7tkcq0CrSjE6XW
+c1kfX4Q7AgMBAAECggEAAzKxi/G6XpOP5KclWaf6YrYXFb3DmRO/lhg+d8ciVBNu
+q/0yEthqbAcEJp1S31IkzZmepCuHPx9zoSnSw/uOrugi7QMgnB+z5TYOhN1IBVB6
+yUSItkNoKd/I/s0OBV+YKlGq5Qm0oB+fQNzqq+4X+4jX1UreHNZ1QK7/W4YgR4fY
+DDFodjXHCOKjdsnTQ2sGTefwuU7YMlV7ZSAqPCZmGDlvDBVG22msPyngzVGVm43l
+vzVGlpfaY34i1w4DKHuZO22hnnM20Ak1chufKG5iLEvS6LSt1PbSso2WpPfEcmBk
+uKKpZBZjuSmofa6MBnVqZv9uew2Ua/yj2jrmBPo8HQKBgQD3S23k/HGR/e2bmsIj
+xQlycotSFbW9UYlykS6t/24LjRXPjIzhUwiuDqjOVWRTHAh/KfnHN9We/kTtV/Sx
+iix0N+KCGnNL2fyF4VVikczUaddj1MgPCSdMRXrSFuDG14FXGhKg5QbRxjdVWNTT
+NB8IMBj78aCaR1eeQqthzIy85wKBgQC1sFgmhxbCaaobqFZnRUm9DquEEI6uninY
+xmQOiPYioMB4r4yAU5Em5upLD1i23riTnSZcnusPDO69H0h5rT+hnN6kWjFEFtDU
+yGxNQBJIEWaMM+iHG6aCn/d2t7VHK4//ZqdLtsykowgx6Mgg0+JgE8srDSWmsEGw
+/1gCNjifjQKBgBFhTcHwNBMso4xyHf7hlD5k6oHEYNeDaYORzJQSBavuKIBDwor7
+iPqisR5/RePJbpdxXcqwk+Tuve1oZxwrN+CbJOI79ap5EZRfN98LnDe5kJfFlqHn
+5MkpgO5PCVEwSDjU7kY8knQf2De5XIvTd/LdXoQmgUEWjoPi76SZ+bI1AoGAG+GQ
+1XC7jF/8q7vcboKSe0GqDl0gGCnLUCm5pwVbiBrVDnAaBoNMbgTXhWc4fO+WsYhX
+H7V/atLYPAt16r4sWpehDuWMU9+QcmbDP+OKKqcI7pD0qO8UUU1NA1nTprVHprDR
+EWxe4RDnrAkF1QvO3GGNNvEQixDXM9srXUOG0u0CgYBqAZz+X48+4UVbekl8yvyy
+Qtr8sxJGf1b0AX71bIekV9znhuVGOrtDuoMYHh4OZDEekQmKsi2Vs4zmHX3SnMCl
+p8GRdoMGjzqeTgsK4Xaj8u40vgoxkBLwAuNZSXhI6zoXUMI6dkkmiJc48HPSty+0
+vQ2Nn5IeNjRpsUn4cyA1Fg==
+-----END PRIVATE KEY-----`,
+			expectedSHA1: "30824ebc7afcd332111e9158288d7e9855f2d3d7",
+		},
+		{
+			name: "ecdsa_p256_ec_private_key_format",
+			privateKeyPEM: `-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEICiuf/frOTnq5bKXltBSbTkouE/YtedUMbjOYSSUNNNmoAoGCCqGSM49
+AwEHoUQDQgAE9wdEAIg+i+1O6ba065NnMh8XxzFkGKwvKLK+Vcp7Ot4iPJL0K4zf
+ACeTyTiHHTk+SStZ7CT8MRIpZSbYw9RceQ==
+-----END EC PRIVATE KEY-----`,
+			expectedSHA1: "d034b26f9ae475116efb04a9b662c61df5d6c414",
+		},
+		{
+			name: "ecdsa_p384_pkcs8",
+			privateKeyPEM: `-----BEGIN PRIVATE KEY-----
+MIG2AgEAMBAGByqGSM49AgEGBSuBBAAiBIGeMIGbAgEBBDAVDYYN7cQIGYneYJj9
+WLhGxJcwY1TukbJoNLNNfn1WE0YwTeax+DSOTonLvTQzPLOhZANiAATgcn5AA0SB
+X7rvHMqEomkHL1D3m8GGkcyAW3lZSQ+AQLDSqMUScCusM+ATg0O5z054sVEO9TXa
+SK4vapn88mHsM5+KNWrPn/18xFJnfGbjHGSToc/AsfMR/V1wILUw4Z4=
+-----END PRIVATE KEY-----`,
+			expectedSHA1: "c5e5f1ef7c73f9b96ba78acdb26b4571a158ba2d",
+		},
+		{
+			name: "ecdsa_p521_pkcs8",
+			privateKeyPEM: `-----BEGIN PRIVATE KEY-----
+MIHuAgEAMBAGByqGSM49AgEGBSuBBAAjBIHWMIHTAgEBBEIAD+lkVOo0kB5uzv++
+fEYm7zpt0WMw50NSpRCn4u7CO1bVaxSXLMukHpVOUaxYkAvD+g3u6zmdeSdCLiDf
+oDknxdqhgYkDgYYABABEwb7jvWPr08LRenM1mWdQzs2upL5DuJjUxhjbtDVLGPNY
+TIB9TtLz4b6maz+DHTK/Xo6G47r8j85ffmxAg3iQ7AGA6YsiOXblkJaBfsmmFhAo
+pldJ5Ip8NA+QkXG7MR7vLuVMOF6Fj5J4PcZQyQBQfikc7HlMJexKsKxV01TtCldK
+FQ==
+-----END PRIVATE KEY-----`,
+			expectedSHA1: "55b8e14789ce8d4afea740c7d4cb3a94ec9b7681",
+		},
+		// PKCS#8 error cases: "failed to parse PKCS#8 private key"
+		{
+			name: "pkcs8_empty_body",
+			privateKeyPEM: `-----BEGIN PRIVATE KEY-----
+-----END PRIVATE KEY-----`,
+			expectError:   true,
+			errorContains: "failed to parse PKCS#8 private key",
+		},
+		{
+			name: "pkcs8_truncated_der",
+			privateKeyPEM: `-----BEGIN PRIVATE KEY-----
+MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCv
+-----END PRIVATE KEY-----`,
+			expectError:   true,
+			errorContains: "failed to parse PKCS#8 private key",
+		},
+		{
+			name: "pkcs8_invalid_der_not_asn1",
+			privateKeyPEM: `-----BEGIN PRIVATE KEY-----
+YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXo=
+-----END PRIVATE KEY-----`,
+			expectError:   true,
+			errorContains: "failed to parse PKCS#8 private key",
 		},
 	}
 

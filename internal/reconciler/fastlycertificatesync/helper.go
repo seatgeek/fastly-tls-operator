@@ -1,6 +1,7 @@
 package fastlycertificatesync
 
 import (
+	"crypto"
 	"crypto/sha1"
 	"crypto/x509"
 	"encoding/hex"
@@ -50,7 +51,8 @@ func getCertificateAndTLSSecretFromSubject(ctx *Context) (*cmv1.Certificate, *co
 	return certificate, secret, nil
 }
 
-// GetPublicKeySHA1FromPEM calculates the SHA1 hash of the public key derived from a PEM-encoded private key
+// getPublicKeySHA1FromPEM calculates the SHA1 hash of the public key derived from a PEM-encoded private key.
+// Supports RSA (PKCS#1), ECDSA (EC PRIVATE KEY or PKCS#8), and PKCS#8 ("PRIVATE KEY") including Ed25519.
 func getPublicKeySHA1FromPEM(keyPEM []byte) (string, error) {
 	// Decode the PEM block
 	block, _ := pem.Decode(keyPEM)
@@ -58,14 +60,33 @@ func getPublicKeySHA1FromPEM(keyPEM []byte) (string, error) {
 		return "", fmt.Errorf("failed to parse PEM block")
 	}
 
-	// Parse the private key as an RSA key
-	priv, err := x509.ParsePKCS1PrivateKey(block.Bytes)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse RSA private key: %w", err)
+	var pubKey interface{}
+	switch block.Type {
+	case "RSA PRIVATE KEY":
+		priv, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse RSA private key: %w", err)
+		}
+		pubKey = &priv.PublicKey
+	case "EC PRIVATE KEY":
+		priv, err := x509.ParseECPrivateKey(block.Bytes)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse EC private key: %w", err)
+		}
+		pubKey = &priv.PublicKey
+	case "PRIVATE KEY":
+		priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse PKCS#8 private key: %w", err)
+		}
+		signer, ok := priv.(crypto.Signer)
+		if !ok {
+			return "", fmt.Errorf("unsupported private key type in PKCS#8: %T", priv)
+		}
+		pubKey = signer.Public()
+	default:
+		return "", fmt.Errorf("unsupported PEM block type %q (expected RSA PRIVATE KEY, EC PRIVATE KEY, or PRIVATE KEY)", block.Type)
 	}
-
-	// Extract the public key (it is part of the RSA private key)
-	pubKey := &priv.PublicKey
 
 	// Marshal the public key to DER format
 	pubKeyBytes, err := x509.MarshalPKIXPublicKey(pubKey)
