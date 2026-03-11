@@ -289,7 +289,7 @@ apply-issuer-secret: test-namespace
 apply-examples: install test-namespace
 	@echo "Creating test namespace '$(TEST_NAMESPACE)'..."
 	@echo "Applying ClusterIssuer..."
-	$(KUBECTL) -n $(TEST_NAMESPACE)apply -f hack/fastlycertificatesync/issuer.yaml
+	$(KUBECTL) -n $(TEST_NAMESPACE) apply -f hack/fastlycertificatesync/issuer.yaml
 	@echo "Applying example resources to '$(TEST_NAMESPACE)' namespace..."
 	$(KUBECTL) -n $(TEST_NAMESPACE) apply -f hack/fastlycertificatesync/example.yaml
 	$(KUBECTL) -n $(TEST_NAMESPACE) apply -f hack/fastlycertificatesync/example-ecdsa.yaml

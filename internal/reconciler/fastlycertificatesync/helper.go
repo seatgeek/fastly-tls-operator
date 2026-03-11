@@ -51,7 +51,7 @@ func getCertificateAndTLSSecretFromSubject(ctx *Context) (*cmv1.Certificate, *co
 	return certificate, secret, nil
 }
 
-// GetPublicKeySHA1FromPEM calculates the SHA1 hash of the public key derived from a PEM-encoded private key.
+// getPublicKeySHA1FromPEM calculates the SHA1 hash of the public key derived from a PEM-encoded private key.
 // Supports RSA (PKCS#1), ECDSA (EC PRIVATE KEY or PKCS#8), and PKCS#8 ("PRIVATE KEY") including Ed25519.
 func getPublicKeySHA1FromPEM(keyPEM []byte) (string, error) {
 	// Decode the PEM block
