@@ -293,3 +293,4 @@ apply-examples: install test-namespace
 	@echo "Applying example resources to '$(TEST_NAMESPACE)' namespace..."
 	$(KUBECTL) -n $(TEST_NAMESPACE) apply -f hack/fastlycertificatesync/example.yaml
 	$(KUBECTL) -n $(TEST_NAMESPACE) apply -f hack/fastlycertificatesync/example-ecdsa.yaml
+	$(KUBECTL) -n $(TEST_NAMESPACE) apply -f hack/fastlycertificatesync/example-rsa-pkcs8.yaml

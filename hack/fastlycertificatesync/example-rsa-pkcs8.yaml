@@ -1,0 +1,40 @@
+# Example using RSA with PKCS#8 encoding. Cert-manager will store the private key
+# in the TLS secret as "-----BEGIN PRIVATE KEY-----" (PKCS#8) instead of
+# "-----BEGIN RSA PRIVATE KEY-----" (PKCS#1). The operator's getPublicKeySHA1FromPEM
+# handles both via the "PRIVATE KEY" case (ParsePKCS8PrivateKey + crypto.Signer).
+apiVersion: platform.seatgeek.io/v1alpha1
+kind: FastlyCertificateSync
+metadata:
+  name: example-rsa-pkcs8
+spec:
+  suspend: false
+  certificateName: example-rsa-pkcs8
+  tlsConfigurationIds:
+  - "FvmqG3m7zgnbyw2PBTzxHw" # (HTTP/3 & TLS v1.3) - configuration IDs are account specific, usage in other accounts will need to change this
+  - "aDDySyCAF3iZzH4ZXW2dEA" # (HTTP/3 & TLS v1.3 + 0RTT) - configuration IDs are account specific, usage in other accounts will need to change this
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: example-rsa-pkcs8
+  annotations:
+    platform.seatgeek.io/enable-fastly-sync: "true"
+spec:
+  commonName: example-rsa-pkcs8.com
+  secretName: example-rsa-pkcs8-tls
+  isCA: false
+  duration: 1h
+  renewBefore: 5m
+  usages:
+    - server auth
+  issuerRef:
+    kind: Issuer
+    name: local-ca-issuer
+  privateKey:
+    rotationPolicy: Always
+    algorithm: RSA
+    size: 2048
+    encoding: PKCS8
+  dnsNames:
+  - "example-rsa-pkcs8.com"
+  - "*.example-rsa-pkcs8.com"
